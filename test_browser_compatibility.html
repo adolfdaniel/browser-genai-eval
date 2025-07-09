@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summarizer API Browser Compatibility Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .section { margin: 20px 0; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Summarizer API Browser Compatibility Test</h1>
+    <p>This page tests various browser implementations of the Summarizer API to help diagnose compatibility issues.</p>
+    
+    <div class="section">
+        <h2>Browser Information</h2>
+        <div id="browser-info"></div>
+    </div>
+
+    <div class="section">
+        <h2>API Detection Tests</h2>
+        <button onclick="runDetectionTests()">Run Detection Tests</button>
+        <div id="detection-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>Summarizer API Tests</h2>
+        <button onclick="runSummarizerTests()">Run Summarizer Tests</button>
+        <div id="summarizer-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>Detailed Logs</h2>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <pre id="detailed-logs"></pre>
+    </div>
+
+    <script>
+        let logs = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logs.push(logEntry);
+            console.log(logEntry);
+            updateLogs();
+        }
+
+        function updateLogs() {
+            document.getElementById('detailed-logs').textContent = logs.join('\n');
+        }
+
+        function clearLogs() {
+            logs = [];
+            updateLogs();
+        }
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            container.appendChild(div);
+        }
+
+        function showBrowserInfo() {
+            const info = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine
+            };
+
+            const infoHtml = Object.entries(info)
+                .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                .join('<br>');
+
+            document.getElementById('browser-info').innerHTML = infoHtml;
+            log('Browser info displayed');
+        }
+
+        async function runDetectionTests() {
+            const container = document.getElementById('detection-results');
+            container.innerHTML = '';
+            log('Starting API detection tests...');
+
+            // Test 1: Global Summarizer API (latest spec)
+            try {
+                if (typeof Summarizer !== 'undefined') {
+                    addResult('detection-results', '✅ Global Summarizer object found', 'success');
+                    log('✅ Global Summarizer object detected');
+
+                    if (typeof Summarizer.availability === 'function') {
+                        try {
+                            const availability = await Summarizer.availability();
+                            addResult('detection-results', `📊 Summarizer.availability(): ${availability}`, 'info');
+                            log(`Summarizer availability: ${availability}`);
+                        } catch (e) {
+                            addResult('detection-results', `❌ Summarizer.availability() failed: ${e.message}`, 'error');
+                            log(`Summarizer.availability() error: ${e.message}`);
+                        }
+                    } else {
+                        addResult('detection-results', '⚠️ Summarizer.availability() method not found', 'warning');
+                        log('Summarizer.availability() method missing');
+                    }
+
+                    if (typeof Summarizer.create === 'function') {
+                        addResult('detection-results', '✅ Summarizer.create() method found', 'success');
+                        log('✅ Summarizer.create() method detected');
+                    } else {
+                        addResult('detection-results', '❌ Summarizer.create() method not found', 'error');
+                        log('❌ Summarizer.create() method missing');
+                    }
+                } else {
+                    addResult('detection-results', '❌ Global Summarizer object not found', 'error');
+                    log('❌ Global Summarizer object not detected');
+                }
+            } catch (e) {
+                addResult('detection-results', `❌ Error testing global Summarizer: ${e.message}`, 'error');
+                log(`Error testing global Summarizer: ${e.message}`);
+            }
+
+            // Test 2: window.ai.summarizer (legacy experimental API)
+            try {
+                if ('ai' in window) {
+                    addResult('detection-results', '✅ window.ai object found', 'success');
+                    log('✅ window.ai object detected');
+
+                    if ('summarizer' in window.ai) {
+                        addResult('detection-results', '✅ window.ai.summarizer found', 'success');
+                        log('✅ window.ai.summarizer detected');
+
+                        if (typeof window.ai.summarizer.capabilities === 'function') {
+                            try {
+                                const capabilities = await window.ai.summarizer.capabilities();
+                                addResult('detection-results', `📊 Legacy capabilities: ${JSON.stringify(capabilities)}`, 'info');
+                                log(`Legacy API capabilities: ${JSON.stringify(capabilities)}`);
+                            } catch (e) {
+                                addResult('detection-results', `❌ Legacy capabilities() failed: ${e.message}`, 'error');
+                                log(`Legacy capabilities() error: ${e.message}`);
+                            }
+                        }
+
+                        if (typeof window.ai.summarizer.create === 'function') {
+                            addResult('detection-results', '✅ Legacy create() method found', 'success');
+                            log('✅ Legacy create() method detected');
+                        }
+                    } else {
+                        addResult('detection-results', '❌ window.ai.summarizer not found', 'error');
+                        log('❌ window.ai.summarizer not detected');
+                    }
+                } else {
+                    addResult('detection-results', '❌ window.ai object not found', 'error');
+                    log('❌ window.ai object not detected');
+                }
+            } catch (e) {
+                addResult('detection-results', `❌ Error testing window.ai: ${e.message}`, 'error');
+                log(`Error testing window.ai: ${e.message}`);
+            }
+
+            // Test 3: Other possible API locations
+            const otherPaths = [
+                'window.AI',
+                'window.webkitAI',
+                'window.mozAI',
+                'window.summarization',
+                'navigator.ai'
+            ];
+
+            for (const path of otherPaths) {
+                try {
+                    const obj = eval(path);
+                    if (obj) {
+                        addResult('detection-results', `✅ Found: ${path}`, 'info');
+                        log(`✅ Detected: ${path}`);
+                    }
+                } catch (e) {
+                    // Expected for most paths
+                }
+            }
+
+            log('API detection tests completed');
+        }
+
+        async function runSummarizerTests() {
+            const container = document.getElementById('summarizer-results');
+            container.innerHTML = '';
+            log('Starting Summarizer functionality tests...');
+
+            const testText = "This is a test article for the browser's summarization API. The text contains multiple sentences to provide enough content for meaningful summarization. The API should be able to process this text and generate a concise summary that captures the main points.";
+
+            // Test 1: Global Summarizer API
+            try {
+                if (typeof Summarizer !== 'undefined') {
+                    log('Testing global Summarizer API...');
+                    addResult('summarizer-results', '🧪 Testing global Summarizer API...', 'info');
+
+                    const summarizer = await Summarizer.create({
+                        sharedContext: "Test summarization for browser compatibility",
+                        type: "tl;dr",
+                        length: "short",
+                        format: "plain-text"
+                    });
+
+                    log('Summarizer instance created successfully');
+                    addResult('summarizer-results', '✅ Summarizer instance created', 'success');
+
+                    const summary = await summarizer.summarize(testText);
+                    log(`Summary generated: ${summary}`);
+                    addResult('summarizer-results', `✅ Summary generated (${summary.length} chars): "${summary}"`, 'success');
+
+                    if (summarizer.destroy) {
+                        summarizer.destroy();
+                        log('Summarizer instance destroyed');
+                    }
+                }
+            } catch (e) {
+                addResult('summarizer-results', `❌ Global Summarizer test failed: ${e.message}`, 'error');
+                log(`Global Summarizer test error: ${e.message}`);
+            }
+
+            // Test 2: Legacy API
+            try {
+                if ('ai' in window && 'summarizer' in window.ai) {
+                    log('Testing legacy window.ai.summarizer API...');
+                    addResult('summarizer-results', '🧪 Testing legacy window.ai.summarizer API...', 'info');
+
+                    const summarizer = await window.ai.summarizer.create({
+                        type: 'key-points',
+                        format: 'plain-text',
+                        length: 'short'
+                    });
+
+                    log('Legacy summarizer instance created successfully');
+                    addResult('summarizer-results', '✅ Legacy summarizer instance created', 'success');
+
+                    const summary = await summarizer.summarize(testText);
+                    log(`Legacy summary generated: ${summary}`);
+                    addResult('summarizer-results', `✅ Legacy summary generated (${summary.length} chars): "${summary}"`, 'success');
+
+                    if (summarizer.destroy) {
+                        summarizer.destroy();
+                        log('Legacy summarizer instance destroyed');
+                    }
+                }
+            } catch (e) {
+                addResult('summarizer-results', `❌ Legacy Summarizer test failed: ${e.message}`, 'error');
+                log(`Legacy Summarizer test error: ${e.message}`);
+            }
+
+            log('Summarizer functionality tests completed');
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            showBrowserInfo();
+            log('Browser compatibility test page loaded');
+        });
+    </script>
+</body>
+</html>
