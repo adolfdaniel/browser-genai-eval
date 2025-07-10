@@ -11,10 +11,13 @@ env:
   AZURE_WEBAPP_PACKAGE_PATH: '.'              # Set this to the path to your web app project
   PYTHON_VERSION: '3.11'                      # Set this to the Python version to use
 
-# IMPORTANT: Before this workflow works, you need to:
-# 1. Deploy your app manually first using deploy-azure.ps1
-# 2. Get the publish profile: az webapp deployment list-publishing-profiles --name YOUR_APP_NAME --resource-group YOUR_RESOURCE_GROUP --xml
-# 3. Add it as a GitHub secret named: AZUREAPPSERVICE_PUBLISHPROFILE
+# IMPORTANT: Before this workflow works, you need to create a service principal and add these GitHub secrets:
+# 1. AZURE_CREDENTIALS - Service principal JSON (see instructions below)
+# 2. Alternatively, you can use AZUREAPPSERVICE_PUBLISHPROFILE if you prefer publish profile method
+#
+# To create service principal credentials:
+# az ad sp create-for-rbac --name "github-actions-sp" --role contributor --scopes /subscriptions/{subscription-id}/resourceGroups/{resource-group} --sdk-auth
+# Add the entire JSON output as AZURE_CREDENTIALS secret in GitHub
 
 jobs:
   build:
@@ -72,10 +75,14 @@ jobs:
           name: python-app
           path: .
 
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v2
         id: deploy-to-webapp
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
