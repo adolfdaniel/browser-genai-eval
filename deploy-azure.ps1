@@ -3,9 +3,9 @@
 
 param(
     [string]$ResourceGroupName = "edge-quality-eval-rg",
-    [string]$AppName = "edge-quality-eval-$(Get-Date -Format 'yyyyMMddHHmmss')",
-    [string]$Location = "eastus", 
-    [string]$Sku = "F1",
+    [string]$AppName = "browser-genai-eval",  # Clean, simple name
+    [string]$Location = "Canada Central",  # Use a location close to your users
+    [string]$Sku = "B2",  # Basic tier: B2 provides good performance for the app
     [string]$SecretKey = ""
 )
 
@@ -14,7 +14,8 @@ Write-Host "=== Azure App Service Deployment Script ===" -ForegroundColor Blue
 # Check if Azure CLI is installed
 try {
     az --version | Out-Null
-} catch {
+}
+catch {
     Write-Host "Error: Azure CLI is not installed." -ForegroundColor Red
     Write-Host "Please install Azure CLI from: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
     exit 1
@@ -23,9 +24,53 @@ try {
 # Check if user is logged in
 try {
     az account show | Out-Null
-} catch {
+    Write-Host "Already logged in to Azure." -ForegroundColor Green
+}
+catch {
     Write-Host "You are not logged in to Azure. Please log in first." -ForegroundColor Yellow
-    az login
+    
+    # Try normal login first
+    try {
+        az login
+    }
+    catch {
+        Write-Host "Standard login failed. Trying device code login..." -ForegroundColor Yellow
+        Write-Host "If you have multiple tenants, you may need to specify tenant ID:" -ForegroundColor Cyan
+        Write-Host "Example: az login --tenant YOUR_TENANT_ID" -ForegroundColor Cyan
+        
+        $useDeviceCode = Read-Host "Use device code login? (y/N)"
+        if ($useDeviceCode -match "^[Yy]$") {
+            az login --use-device-code
+        }
+        else {
+            $tenantId = Read-Host "Enter your tenant ID (or press Enter to retry normal login)"
+            if ($tenantId) {
+                az login --tenant $tenantId
+            }
+            else {
+                az login
+            }
+        }
+    }
+}
+
+# Handle multiple subscriptions
+$subscriptions = az account list --query "[].{Name:name, Id:id, IsDefault:isDefault}" --output table
+Write-Host "Available Azure Subscriptions:" -ForegroundColor Blue
+Write-Host $subscriptions
+
+$currentSubscription = az account show --query "{Name:name, Id:id}" --output table
+Write-Host "Currently selected subscription:" -ForegroundColor Green
+Write-Host $currentSubscription
+
+$changeSubscription = Read-Host "Do you want to change the subscription? (y/N)"
+if ($changeSubscription -match "^[Yy]$") {
+    $subscriptionId = Read-Host "Enter the Subscription ID you want to use"
+    if ($subscriptionId) {
+        Write-Host "Setting subscription to: $subscriptionId" -ForegroundColor Yellow
+        az account set --subscription $subscriptionId
+        Write-Host "Subscription changed successfully!" -ForegroundColor Green
+    }
 }
 
 # Get user input if not provided as parameters
@@ -35,7 +80,7 @@ if (-not $ResourceGroupName) {
 }
 
 if (-not $AppName) {
-    $defaultAppName = "edge-quality-eval-$(Get-Date -Format 'yyyyMMddHHmmss')"
+    $defaultAppName = "browser-genai-eval"
     $AppName = Read-Host "Enter App Service name [$defaultAppName]"
     if (-not $AppName) { $AppName = $defaultAppName }
 }
@@ -46,13 +91,13 @@ if (-not $Location) {
 }
 
 if (-not $Sku) {
-    $Sku = Read-Host "Enter SKU (F1=Free, B1=Basic, S1=Standard) [F1]"
-    if (-not $Sku) { $Sku = "F1" }
+    $Sku = Read-Host "Enter SKU (F1=Free, B1=Basic, B2=Basic+, S1=Standard) [B2]"
+    if (-not $Sku) { $Sku = "B2" }
 }
 
 if (-not $SecretKey) {
-    $SecretKey = Read-Host "Enter a secret key for Flask sessions" -AsSecureString
-    $SecretKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecretKey))
+    $SecretKeySecure = Read-Host "Enter a secret key for Flask sessions" -AsSecureString
+    $SecretKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecretKeySecure))
 }
 
 if (-not $SecretKey) {
@@ -74,46 +119,41 @@ if ($confirm -notmatch "^[Yy]$") {
 }
 
 Write-Host "Creating resource group..." -ForegroundColor Yellow
-az group create --name $ResourceGroupName --location $Location
+$rgExists = az group exists --name $ResourceGroupName
+if ($rgExists -eq "true") {
+    Write-Host "Resource group '$ResourceGroupName' already exists. Skipping creation." -ForegroundColor Cyan
+}
+else {
+    az group create --name $ResourceGroupName --location $Location
+}
 
 Write-Host "Creating App Service Plan..." -ForegroundColor Yellow
-az appservice plan create `
-    --name "$AppName-plan" `
-    --resource-group $ResourceGroupName `
-    --location $Location `
-    --sku $Sku `
-    --is-linux
+$planExists = az appservice plan show --name "$AppName-plan" --resource-group $ResourceGroupName 2>$null
+if ($planExists) {
+    Write-Host "App Service Plan '$AppName-plan' already exists. Skipping creation." -ForegroundColor Cyan
+}
+else {
+    az appservice plan create --name "$AppName-plan" --resource-group $ResourceGroupName --location $Location --sku $Sku --is-linux
+}
 
 Write-Host "Creating Web App..." -ForegroundColor Yellow
-az webapp create `
-    --name $AppName `
-    --resource-group $ResourceGroupName `
-    --plan "$AppName-plan" `
-    --runtime "PYTHON|3.11"
+$webappExists = az webapp show --name $AppName --resource-group $ResourceGroupName 2>$null
+if ($webappExists) {
+    Write-Host "Web App '$AppName' already exists. Skipping creation." -ForegroundColor Cyan
+}
+else {
+    $runtime = '"PYTHON|3.11"'
+    az webapp create --name $AppName --resource-group $ResourceGroupName --plan "$AppName-plan" --runtime $runtime
+}
 
 Write-Host "Configuring app settings..." -ForegroundColor Yellow
-az webapp config appsettings set `
-    --name $AppName `
-    --resource-group $ResourceGroupName `
-    --settings `
-        SECRET_KEY="$SecretKey" `
-        WEBSITE_TIME_ZONE="UTC" `
-        SCM_DO_BUILD_DURING_DEPLOYMENT="true" `
-        ENABLE_ORYX_BUILD="true"
+az webapp config appsettings set --name $AppName --resource-group $ResourceGroupName --settings SECRET_KEY="$SecretKey" WEBSITE_TIME_ZONE="UTC" SCM_DO_BUILD_DURING_DEPLOYMENT="true" ENABLE_ORYX_BUILD="true"
 
 Write-Host "Enabling HTTPS only..." -ForegroundColor Yellow
-az webapp update `
-    --name $AppName `
-    --resource-group $ResourceGroupName `
-    --https-only true
+az webapp update --name $AppName --resource-group $ResourceGroupName --https-only true
 
 Write-Host "Deploying application code..." -ForegroundColor Yellow
-az webapp up `
-    --name $AppName `
-    --resource-group $ResourceGroupName `
-    --location $Location `
-    --sku $Sku `
-    --runtime "PYTHON|3.11"
+& az webapp up --name $AppName --resource-group $ResourceGroupName --location $Location --sku $Sku --runtime '"PYTHON|3.11"'
 
 $AppUrl = "https://$AppName.azurewebsites.net"
 

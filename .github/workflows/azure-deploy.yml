@@ -7,9 +7,14 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: edge-quality-eval-app    # Set this to your app name
+  AZURE_WEBAPP_NAME: browser-genai-eval       # Clean, simple name
   AZURE_WEBAPP_PACKAGE_PATH: '.'              # Set this to the path to your web app project
   PYTHON_VERSION: '3.11'                      # Set this to the Python version to use
+
+# IMPORTANT: Before this workflow works, you need to:
+# 1. Deploy your app manually first using deploy-azure.ps1
+# 2. Get the publish profile: az webapp deployment list-publishing-profiles --name YOUR_APP_NAME --resource-group YOUR_RESOURCE_GROUP --xml
+# 3. Add it as a GitHub secret named: AZUREAPPSERVICE_PUBLISHPROFILE
 
 jobs:
   build:

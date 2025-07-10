@@ -29,7 +29,7 @@ fi
 
 # Default values
 RESOURCE_GROUP_NAME="edge-quality-eval-rg"
-APP_NAME="edge-quality-eval-$(date +%s)"
+APP_NAME="browser-genai-eval"
 LOCATION="eastus"
 SKU="F1"
 
