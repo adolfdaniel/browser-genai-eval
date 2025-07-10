@@ -347,7 +347,7 @@ def create_mock_result(article, config=None):
     # Calculate compression ratio
     article_length = len(article['article'])
     summary_length = len(mock_summary)
-    compression_ratio = summary_length / article_length if article_length > 0 else 0
+    compression_ratio = article_length / summary_length if summary_length > 0 else 0
     
     # Mock processing time (since this is fallback)
     processing_time = 1.0  # 1 second mock time
@@ -415,7 +415,7 @@ def handle_summarization_result(data):
             # Calculate compression ratio
             article_length = len(article['article'])
             summary_length = len(generated_summary)
-            compression_ratio = summary_length / article_length if article_length > 0 else 0
+            compression_ratio = article_length / summary_length if summary_length > 0 else 0
             
             result = {
                 'article_id': article['id'],
