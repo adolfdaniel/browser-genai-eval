@@ -272,7 +272,8 @@ def request_browser_summarization(article):
                 'article': article,
                 'config': config,
                 'result': None,
-                'completed': False
+                'completed': False,
+                'start_time': time.time()  # Add start time for processing time calculation
             }
             
             # Emit request to browser
@@ -343,6 +344,14 @@ def create_mock_result(article, config=None):
         mock_summary
     )
     
+    # Calculate compression ratio
+    article_length = len(article['article'])
+    summary_length = len(mock_summary)
+    compression_ratio = summary_length / article_length if article_length > 0 else 0
+    
+    # Mock processing time (since this is fallback)
+    processing_time = 1.0  # 1 second mock time
+    
     return {
         'article_id': article['id'],
         'configuration': config or 'unknown',
@@ -350,6 +359,8 @@ def create_mock_result(article, config=None):
         'reference_summary': article['reference_summary'],
         'generated_summary': mock_summary,
         'rouge_scores': rouge_scores,
+        'compression_ratio': compression_ratio,
+        'processing_time': processing_time,
         'timestamp': datetime.now().isoformat(),
         'source': 'mock_fallback'
     }
@@ -387,6 +398,10 @@ def handle_summarization_result(data):
         article = request_data['article']
         config = request_data.get('config')
         
+        # Calculate processing time
+        request_start_time = request_data.get('start_time', time.time())
+        processing_time = time.time() - request_start_time
+        
         if error_message:
             log_message(f"Error in browser summarization: {error_message}")
             result = create_mock_result(article, config)  # Fallback to mock
@@ -397,6 +412,11 @@ def handle_summarization_result(data):
                 generated_summary
             )
             
+            # Calculate compression ratio
+            article_length = len(article['article'])
+            summary_length = len(generated_summary)
+            compression_ratio = summary_length / article_length if article_length > 0 else 0
+            
             result = {
                 'article_id': article['id'],
                 'configuration': config or 'unknown',
@@ -404,6 +424,8 @@ def handle_summarization_result(data):
                 'reference_summary': article['reference_summary'],
                 'generated_summary': generated_summary,
                 'rouge_scores': rouge_scores,
+                'compression_ratio': compression_ratio,
+                'processing_time': processing_time,
                 'timestamp': datetime.now().isoformat(),
                 'source': 'browser_api'
             }
