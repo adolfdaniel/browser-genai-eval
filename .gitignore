@@ -174,3 +174,12 @@ datasets/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Azure deployment files (keep deployment configs but exclude secrets)
+azure/parameters.json
+.azure/
+publish-profiles/
+
+# Local environment files
+.env.local
+.env.production

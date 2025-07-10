@@ -11,7 +11,12 @@ import evaluate
 from rouge_score import rouge_scorer
 import threading
 import time
-import config
+
+# Import appropriate config based on environment
+if os.environ.get('WEBSITE_SITE_NAME'):  # Azure App Service environment variable
+    import config_production as config
+else:
+    import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

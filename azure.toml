@@ -1,0 +1,9 @@
+# Azure App Service deployment configuration
+# This file tells Azure how to install and run your Python application
+
+[build-system]
+requires = ["wheel"]
+
+[tool.azure]
+build = "pip install --upgrade pip && pip install -r requirements.txt"
+startup = "python startup.py"
