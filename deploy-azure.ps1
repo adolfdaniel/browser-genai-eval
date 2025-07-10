@@ -149,6 +149,9 @@ else {
 Write-Host "Configuring app settings..." -ForegroundColor Yellow
 az webapp config appsettings set --name $AppName --resource-group $ResourceGroupName --settings SECRET_KEY="$SecretKey" WEBSITE_TIME_ZONE="UTC" SCM_DO_BUILD_DURING_DEPLOYMENT="true" ENABLE_ORYX_BUILD="true"
 
+Write-Host "Setting startup command..." -ForegroundColor Yellow
+az webapp config set --name $AppName --resource-group $ResourceGroupName --startup-file "python startup.py"
+
 Write-Host "Enabling HTTPS only..." -ForegroundColor Yellow
 az webapp update --name $AppName --resource-group $ResourceGroupName --https-only true
 
