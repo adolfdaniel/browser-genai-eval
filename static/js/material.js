@@ -64,6 +64,31 @@ function initializeMaterialComponents() {
     document.querySelectorAll('.mdc-list-item').forEach(el => {
         new mdc.ripple.MDCRipple(el);
     });
+
+    // Initialize Bootstrap tooltips
+    initializeTooltips();
+}
+
+// Initialize Bootstrap tooltips
+function initializeTooltips() {
+    // Dispose of existing tooltips first to avoid duplicates
+    const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    existingTooltips.forEach(el => {
+        const existingTooltip = bootstrap.Tooltip.getInstance(el);
+        if (existingTooltip) {
+            existingTooltip.dispose();
+        }
+    });
+    
+    // Initialize new tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            html: true,
+            delay: { show: 500, hide: 100 },
+            boundary: 'viewport'
+        });
+    });
 }
 
 // Initialize Socket.IO connection
@@ -727,6 +752,7 @@ function addResultToTable(result) {
     
     const row = document.createElement('tr');
     row.className = 'mdc-data-table__row';
+    row.setAttribute('role', 'row');
     
     const rouge1 = result.rouge_scores?.rouge1 ?? 'N/A';
     const rouge2 = result.rouge_scores?.rouge2 ?? 'N/A';
@@ -736,24 +762,83 @@ function addResultToTable(result) {
     const rouge2Str = typeof rouge2 === 'number' ? rouge2.toFixed(3) : rouge2;
     const rougeLStr = typeof rougeL === 'number' ? rougeL.toFixed(3) : rougeL;
     
+    // Prepare tooltip content for generated summary
+    const generatedSummary = result.generated_summary || 'N/A';
+    const summaryPreview = generatedSummary.length > 100 ? 
+        generatedSummary.substring(0, 100) + '...' : generatedSummary;
+    const summaryTooltip = generatedSummary.length > 100 ? 
+        `data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(generatedSummary)}"` : '';
+    
+    // Prepare tooltip content for reference summary
+    const referenceSummary = result.reference_summary || 'N/A';
+    const referencePreview = referenceSummary.length > 50 ? 
+        referenceSummary.substring(0, 50) + '...' : referenceSummary;
+    const referenceTooltip = referenceSummary.length > 50 ? 
+        `data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(referenceSummary)}"` : '';
+    
+    // Prepare configuration tooltip
+    const configTooltip = `data-bs-toggle="tooltip" data-bs-placement="top" title="Generated Summary: ${escapeHtml(summaryPreview)}<br><br>Reference Summary: ${escapeHtml(referencePreview)}"`;
+    
     row.innerHTML = `
-        <td class="mdc-data-table__cell">${result.article_id}</td>
-        <td class="mdc-data-table__cell"><code>${result.config}</code></td>
-        <td class="mdc-data-table__cell">${result.summary ? result.summary.length : 'N/A'}</td>
-        <td class="mdc-data-table__cell">${rouge1Str}</td>
-        <td class="mdc-data-table__cell">${rouge2Str}</td>
-        <td class="mdc-data-table__cell">${rougeLStr}</td>
-        <td class="mdc-data-table__cell">${result.compression_ratio ? result.compression_ratio.toFixed(2) : 'N/A'}</td>
-        <td class="mdc-data-table__cell">${result.processing_time ? result.processing_time.toFixed(2) + 's' : 'N/A'}</td>
+        <td class="mdc-data-table__cell" role="cell">${result.article_id}</td>
+        <td class="mdc-data-table__cell" role="cell">
+            <code ${configTooltip}>${result.config || result.configuration || 'N/A'}</code>
+        </td>
+        <td class="mdc-data-table__cell" role="cell" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="top" 
+            title="Article: ${result.article_length || 'N/A'} chars | Summary: ${result.generated_summary ? result.generated_summary.length : 'N/A'} chars">
+            ${result.article_length || 'N/A'}
+        </td>
+        <td class="mdc-data-table__cell" role="cell" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="top" 
+            title="ROUGE-1 measures unigram overlap between generated and reference summaries">
+            ${rouge1Str}
+        </td>
+        <td class="mdc-data-table__cell" role="cell" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="top" 
+            title="ROUGE-2 measures bigram overlap between generated and reference summaries">
+            ${rouge2Str}
+        </td>
+        <td class="mdc-data-table__cell" role="cell" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="top" 
+            title="ROUGE-L measures longest common subsequence between summaries">
+            ${rougeLStr}
+        </td>
+        <td class="mdc-data-table__cell" role="cell" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="top" 
+            title="Compression ratio: ${result.compression_ratio ? result.compression_ratio.toFixed(2) + ':1' : 'N/A'} (original length ÷ summary length)">
+            ${result.compression_ratio ? result.compression_ratio.toFixed(2) : 'N/A'}
+        </td>
+        <td class="mdc-data-table__cell" role="cell" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="top" 
+            title="Time taken to generate this summary">
+            ${result.processing_time ? result.processing_time.toFixed(2) + 's' : 'N/A'}
+        </td>
     `;
     
     tbody.appendChild(row);
+    
+    // Initialize tooltips for the new row
+    initializeTooltips();
     
     // Add visual feedback for new row
     row.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
     setTimeout(() => {
         row.style.backgroundColor = '';
     }, 2000);
+}
+
+// Helper function to escape HTML for tooltips
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML.replace(/"/g, '&quot;');
 }
 
 // Update summary metrics
@@ -800,6 +885,9 @@ function updateSummaryMetrics() {
     if (avgRouge2Element) avgRouge2Element.textContent = avgRouge2.toFixed(3);
     if (avgRougeLElement) avgRougeLElement.textContent = avgRougeL.toFixed(3);
     if (bestConfigElement) bestConfigElement.textContent = bestConfig;
+    
+    // Reinitialize tooltips for updated content
+    initializeTooltips();
 }
 
 // Show configuration analysis
@@ -927,128 +1015,619 @@ function addLog(message, type = 'info') {
 }
 
 function logInputData(articleId, inputText) {
-    const inputLogs = document.getElementById('input-logs');
-    const timestamp = new Date().toLocaleTimeString();
-    
-    const logEntry = document.createElement('div');
-    logEntry.className = 'log-entry info';
-    logEntry.setAttribute('data-article-id', articleId); // Add data attribute for tracking
-    logEntry.innerHTML = `
-        <div><strong>Article ${articleId}</strong> <span class="text-muted">${timestamp}</span></div>
-        <div class="mt-2">${inputText.substring(0, 200)}${inputText.length > 200 ? '...' : ''}</div>
+  const inputLogs = document.getElementById('input-logs');
+  const timestamp = new Date().toLocaleTimeString();
+
+  const logEntry = document.createElement('div');
+  logEntry.className = 'log-entry info';
+  logEntry.setAttribute('data-article-id', articleId); // Add data attribute for tracking
+
+  // Enhanced article display with better formatting
+  const wordCount = inputText.split(/\s+/).length;
+  const charCount = inputText.length;
+  const readingTime = Math.ceil(wordCount / 200); // Average reading speed
+
+  // Create a more intelligent truncation
+  let displayText = inputText;
+  let showExpandButton = false;
+
+  if (inputText.length > 300) {
+    // Find a good break point (end of sentence or paragraph)
+    let truncateAt = 300;
+    const sentenceBreak = inputText.lastIndexOf('.', 300);
+    const paragraphBreak = inputText.lastIndexOf('\n', 300);
+
+    if (sentenceBreak > 200) {
+      truncateAt = sentenceBreak + 1;
+    } else if (paragraphBreak > 200) {
+      truncateAt = paragraphBreak;
+    }
+
+    displayText = inputText.substring(0, truncateAt).trim() + '...';
+    showExpandButton = true;
+  }
+
+  // Format the text for better readability
+  const formattedText = displayText
+    .replace(/\n\n/g, '</p><p class="mb-2">')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<p class="mb-2">')
+    .replace(/$/, '</p>');
+
+  const hasTooltip = inputText.length > 300;
+  const tooltipAttrs = hasTooltip
+    ? `data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(
+        'Click to view full article',
+      )}"`
+    : '';
+
+  logEntry.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <strong>Article ${articleId}</strong> 
+                <span class="text-muted">${timestamp}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <small class="text-muted">
+                    ${charCount.toLocaleString()} chars • ${wordCount.toLocaleString()} words • ${readingTime} min read
+                </small>
+                <button class="btn btn-outline-secondary btn-sm copy-btn" 
+                        onclick="copyToClipboard(this, '${escapeHtml(
+                          inputText,
+                        ).replace(/'/g, "\\'")}')"
+                        data-bs-toggle="tooltip" 
+                        data-bs-placement="top" 
+                        title="Copy full article to clipboard">
+                    <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                </button>
+            </div>
+        </div>
+        <div class="article-content" data-full-text="${escapeHtml(
+          inputText,
+        )}" ${tooltipAttrs}>
+            <div class="article-text ${
+              inputText.length > 300 ? 'expandable' : ''
+            }">${formattedText}</div>
+            ${
+              showExpandButton
+                ? `
+                <button class="btn btn-link btn-sm p-0 mt-2 expand-article-btn" 
+                        onclick="toggleArticleExpansion(this)"
+                        data-bs-toggle="tooltip" 
+                        data-bs-placement="top" 
+                        title="Click to expand/collapse full article">
+                    <span class="material-icons align-middle me-1">expand_more</span>
+                    Show full article
+                </button>
+            `
+                : ''
+            }
+        </div>
     `;
-    
-    inputLogs.appendChild(logEntry);
-    inputLogs.scrollTop = inputLogs.scrollHeight;
+
+  inputLogs.appendChild(logEntry);
+  inputLogs.scrollTop = inputLogs.scrollHeight;
+
+  // Initialize tooltips for new content
+  if (hasTooltip || showExpandButton) {
+    initializeTooltips();
+  }
 }
 
 function logOutputData(articleId, config, summary, rougeScores) {
-    const outputLogs = document.getElementById('output-logs');
-    const timestamp = new Date().toLocaleTimeString();
-    
-    const rouge1 = rougeScores?.rouge1 ?? 'N/A';
-    const rouge2 = rougeScores?.rouge2 ?? 'N/A';
-    const rougeL = rougeScores?.rougeL ?? 'N/A';
-    
-    // Check if we already have an entry for this article
-    const existingArticleEntry = outputLogs.querySelector(`[data-article-id="${articleId}"]`);
-    
-    if (existingArticleEntry) {
-        // Add this configuration result to the existing article entry
-        const configResult = document.createElement('div');
-        configResult.className = 'config-result mt-2 p-2';
-        configResult.style.borderLeft = '2px solid #2196f3';
-        configResult.style.backgroundColor = 'rgba(33,150,243,0.05)';
-        configResult.innerHTML = `
-            <div><strong>Config:</strong> <code>${config}</code> <span class="text-muted">${timestamp}</span></div>
-            <div class="mt-1"><strong>Summary:</strong> ${summary}</div>
-            <div class="mt-1"><strong>ROUGE:</strong> R1: ${typeof rouge1 === 'number' ? rouge1.toFixed(3) : rouge1}, R2: ${typeof rouge2 === 'number' ? rouge2.toFixed(3) : rouge2}, RL: ${typeof rougeL === 'number' ? rougeL.toFixed(3) : rougeL}</div>
-        `;
-        existingArticleEntry.appendChild(configResult);
-    } else {
-        // Create new article entry
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry success';
-        logEntry.setAttribute('data-article-id', articleId);
-        logEntry.innerHTML = `
-            <div><strong>Article ${articleId}</strong> <span class="text-muted">${timestamp}</span></div>
-            <div class="config-result mt-2 p-2" style="border-left: 2px solid #2196f3; background-color: rgba(33,150,243,0.05);">
-                <div><strong>Config:</strong> <code>${config}</code></div>
-                <div class="mt-1"><strong>Summary:</strong> ${summary}</div>
-                <div class="mt-1"><strong>ROUGE:</strong> R1: ${typeof rouge1 === 'number' ? rouge1.toFixed(3) : rouge1}, R2: ${typeof rouge2 === 'number' ? rouge2.toFixed(3) : rouge2}, RL: ${typeof rougeL === 'number' ? rougeL.toFixed(3) : rougeL}</div>
+  const outputLogs = document.getElementById('output-logs');
+  const timestamp = new Date().toLocaleTimeString();
+
+  const rouge1 = rougeScores?.rouge1 ?? 'N/A';
+  const rouge2 = rougeScores?.rouge2 ?? 'N/A';
+  const rougeL = rougeScores?.rougeL ?? 'N/A';
+
+  // Enhanced summary display
+  const summaryWordCount = summary.split(/\s+/).length;
+  const summaryCharCount = summary.length;
+
+  // Check if we already have an entry for this article
+  const existingArticleEntry = outputLogs.querySelector(
+    `[data-article-id="${articleId}"]`,
+  );
+
+  if (existingArticleEntry) {
+    // Add this configuration result to the existing article entry
+    const configResult = document.createElement('div');
+    configResult.className = 'config-result mt-2 p-3';
+    configResult.style.borderLeft = '3px solid #2196f3';
+    configResult.style.backgroundColor = 'rgba(33,150,243,0.05)';
+    configResult.style.borderRadius = '0 4px 4px 0';
+
+    // Enhanced summary truncation
+    let displaySummary = summary;
+    let showSummaryExpandButton = false;
+
+    if (summary.length > 200) {
+      let truncateAt = 200;
+      const sentenceBreak = summary.lastIndexOf('.', 200);
+
+      if (sentenceBreak > 100) {
+        truncateAt = sentenceBreak + 1;
+      }
+
+      displaySummary = summary.substring(0, truncateAt).trim() + '...';
+      showSummaryExpandButton = true;
+    }
+
+    const formattedSummary = displaySummary
+      .replace(/\n\n/g, '</p><p class="mb-1">')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p class="mb-1">')
+      .replace(/$/, '</p>');
+
+    const hasSummaryTooltip = summary.length > 200;
+    const summaryTooltipAttrs = hasSummaryTooltip
+      ? `data-bs-toggle="tooltip" data-bs-placement="top" title="Click to expand/collapse summary"`
+      : '';
+
+    configResult.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <strong>Config:</strong> <code class="bg-light px-2 py-1 rounded">${config}</code>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <small class="text-muted">${timestamp}</small>
+                    <button class="btn btn-outline-secondary btn-sm copy-btn" 
+                            onclick="copyToClipboard(this, '${escapeHtml(
+                              summary,
+                            ).replace(/'/g, "\\'")}')"
+                            data-bs-toggle="tooltip" 
+                            data-bs-placement="top" 
+                            title="Copy summary to clipboard">
+                        <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                    </button>
+                </div>
+            </div>
+            <div class="mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong class="text-primary">Summary:</strong>
+                    <small class="text-muted">${summaryCharCount} chars • ${summaryWordCount} words</small>
+                </div>
+                <div class="summary-content" data-full-text="${escapeHtml(
+                  summary,
+                )}" ${summaryTooltipAttrs}>
+                    <div class="summary-text ${
+                      summary.length > 200 ? 'expandable' : ''
+                    } bg-light p-2 rounded">${formattedSummary}</div>
+                    ${
+                      showSummaryExpandButton
+                        ? `
+                        <button class="btn btn-link btn-sm p-0 mt-1 expand-summary-btn" 
+                                onclick="toggleSummaryExpansion(this)"
+                                data-bs-toggle="tooltip" 
+                                data-bs-placement="top" 
+                                title="Click to expand/collapse full summary">
+                            <span class="material-icons align-middle me-1">expand_more</span>
+                            Show full summary
+                        </button>
+                    `
+                        : ''
+                    }
+                </div>
+            </div>
+            <div class="rouge-scores">
+                <strong class="text-success">ROUGE Scores:</strong>
+                <span class="badge bg-primary me-1" data-bs-toggle="tooltip" title="ROUGE-1: Unigram overlap">R1: ${
+                  typeof rouge1 === 'number' ? rouge1.toFixed(3) : rouge1
+                }</span>
+                <span class="badge bg-info me-1" data-bs-toggle="tooltip" title="ROUGE-2: Bigram overlap">R2: ${
+                  typeof rouge2 === 'number' ? rouge2.toFixed(3) : rouge2
+                }</span>
+                <span class="badge bg-success" data-bs-toggle="tooltip" title="ROUGE-L: Longest common subsequence">RL: ${
+                  typeof rougeL === 'number' ? rougeL.toFixed(3) : rougeL
+                }</span>
             </div>
         `;
-        outputLogs.appendChild(logEntry);
+    existingArticleEntry.appendChild(configResult);
+
+    // Initialize tooltips for new content
+    if (hasSummaryTooltip || showSummaryExpandButton) {
+      initializeTooltips();
     }
-    
-    outputLogs.scrollTop = outputLogs.scrollHeight;
+  } else {
+    // Create new article entry
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry success';
+    logEntry.setAttribute('data-article-id', articleId);
+
+    // Enhanced summary truncation for new entries
+    let displaySummary = summary;
+    let showSummaryExpandButton = false;
+
+    if (summary.length > 200) {
+      let truncateAt = 200;
+      const sentenceBreak = summary.lastIndexOf('.', 200);
+
+      if (sentenceBreak > 100) {
+        truncateAt = sentenceBreak + 1;
+      }
+
+      displaySummary = summary.substring(0, truncateAt).trim() + '...';
+      showSummaryExpandButton = true;
+    }
+
+    const formattedSummary = displaySummary
+      .replace(/\n\n/g, '</p><p class="mb-1">')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p class="mb-1">')
+      .replace(/$/, '</p>');
+
+    const hasSummaryTooltip = summary.length > 200;
+    const summaryTooltipAttrs = hasSummaryTooltip
+      ? `data-bs-toggle="tooltip" data-bs-placement="top" title="Click to expand/collapse summary"`
+      : '';
+
+    logEntry.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <strong>Article ${articleId}</strong> 
+                    <span class="text-muted">${timestamp}</span>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm copy-btn" 
+                        onclick="copyToClipboard(this, '${escapeHtml(
+                          summary,
+                        ).replace(/'/g, "\\'")}')"
+                        data-bs-toggle="tooltip" 
+                        data-bs-placement="top" 
+                        title="Copy summary to clipboard">
+                    <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                </button>
+            </div>
+            <div class="config-result p-3" style="border-left: 3px solid #2196f3; background-color: rgba(33,150,243,0.05); border-radius: 0 4px 4px 0;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <strong>Config:</strong> <code class="bg-light px-2 py-1 rounded">${config}</code>
+                </div>
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-primary">Summary:</strong>
+                        <small class="text-muted">${summaryCharCount} chars • ${summaryWordCount} words</small>
+                    </div>
+                    <div class="summary-content" data-full-text="${escapeHtml(
+                      summary,
+                    )}" ${summaryTooltipAttrs}>
+                        <div class="summary-text ${
+                          summary.length > 200 ? 'expandable' : ''
+                        } bg-light p-2 rounded">${formattedSummary}</div>
+                        ${
+                          showSummaryExpandButton
+                            ? `
+                            <button class="btn btn-link btn-sm p-0 mt-1 expand-summary-btn" 
+                                    onclick="toggleSummaryExpansion(this)"
+                                    data-bs-toggle="tooltip" 
+                                    data-bs-placement="top" 
+                                    title="Click to expand/collapse full summary">
+                                <span class="material-icons align-middle me-1">expand_more</span>
+                                Show full summary
+                            </button>
+                        `
+                            : ''
+                        }
+                    </div>
+                </div>
+                <div class="rouge-scores">
+                    <strong class="text-success">ROUGE Scores:</strong>
+                    <span class="badge bg-primary me-1" data-bs-toggle="tooltip" title="ROUGE-1: Unigram overlap">R1: ${
+                      typeof rouge1 === 'number' ? rouge1.toFixed(3) : rouge1
+                    }</span>
+                    <span class="badge bg-info me-1" data-bs-toggle="tooltip" title="ROUGE-2: Bigram overlap">R2: ${
+                      typeof rouge2 === 'number' ? rouge2.toFixed(3) : rouge2
+                    }</span>
+                    <span class="badge bg-success" data-bs-toggle="tooltip" title="ROUGE-L: Longest common subsequence">RL: ${
+                      typeof rougeL === 'number' ? rougeL.toFixed(3) : rougeL
+                    }</span>
+                </div>
+            </div>
+        `;
+    outputLogs.appendChild(logEntry);
+
+    // Initialize tooltips for new content
+    if (hasSummaryTooltip || showSummaryExpandButton) {
+      initializeTooltips();
+    }
+  }
+
+  outputLogs.scrollTop = outputLogs.scrollHeight;
 }
 
 function clearLogs() {
-    document.getElementById('logs').innerHTML = '';
+  document.getElementById('logs').innerHTML = '';
 }
 
 function clearInputLogs() {
-    document.getElementById('input-logs').innerHTML = '';
+  document.getElementById('input-logs').innerHTML = '';
 }
 
 function clearOutputLogs() {
-    document.getElementById('output-logs').innerHTML = '';
+  document.getElementById('output-logs').innerHTML = '';
+}
+
+// Toggle article expansion
+function toggleArticleExpansion(button) {
+  const articleContent = button.closest('.article-content');
+  const articleText = articleContent.querySelector('.article-text');
+  const fullText = articleContent.getAttribute('data-full-text');
+  const icon = button.querySelector('.material-icons');
+  const buttonText =
+    button.querySelector('span:last-child') || button.lastChild;
+
+  if (articleText.classList.contains('expanded')) {
+    // Collapse
+    const originalText = fullText.substring(0, 300);
+    let truncateAt = 300;
+    const sentenceBreak = originalText.lastIndexOf('.', 300);
+    const paragraphBreak = originalText.lastIndexOf('\n', 300);
+
+    if (sentenceBreak > 200) {
+      truncateAt = sentenceBreak + 1;
+    } else if (paragraphBreak > 200) {
+      truncateAt = paragraphBreak;
+    }
+
+    const displayText = fullText.substring(0, truncateAt).trim() + '...';
+    const formattedText = displayText
+      .replace(/\n\n/g, '</p><p class="mb-2">')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p class="mb-2">')
+      .replace(/$/, '</p>');
+
+    articleText.innerHTML = formattedText;
+    articleText.classList.remove('expanded');
+    icon.textContent = 'expand_more';
+    buttonText.textContent = ' Show full article';
+    button.setAttribute('title', 'Click to expand full article');
+  } else {
+    // Expand
+    const formattedText = fullText
+      .replace(/\n\n/g, '</p><p class="mb-2">')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p class="mb-2">')
+      .replace(/$/, '</p>');
+
+    articleText.innerHTML = formattedText;
+    articleText.classList.add('expanded');
+    icon.textContent = 'expand_less';
+    buttonText.textContent = ' Hide full article';
+    button.setAttribute('title', 'Click to collapse article');
+  }
+
+  // Update tooltip
+  initializeTooltips();
+}
+
+// Toggle summary expansion
+function toggleSummaryExpansion(button) {
+  const summaryContent = button.closest('.summary-content');
+  const summaryText = summaryContent.querySelector('.summary-text');
+  const fullText = summaryContent.getAttribute('data-full-text');
+  const icon = button.querySelector('.material-icons');
+  const buttonText =
+    button.querySelector('span:last-child') || button.lastChild;
+
+  if (summaryText.classList.contains('expanded')) {
+    // Collapse
+    const originalText = fullText.substring(0, 200);
+    let truncateAt = 200;
+    const sentenceBreak = originalText.lastIndexOf('.', 200);
+
+    if (sentenceBreak > 100) {
+      truncateAt = sentenceBreak + 1;
+    }
+
+    const displayText = fullText.substring(0, truncateAt).trim() + '...';
+    const formattedText = displayText
+      .replace(/\n\n/g, '</p><p class="mb-1">')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p class="mb-1">')
+      .replace(/$/, '</p>');
+
+    summaryText.innerHTML = formattedText;
+    summaryText.classList.remove('expanded');
+    icon.textContent = 'expand_more';
+    buttonText.textContent = ' Show full summary';
+    button.setAttribute('title', 'Click to expand full summary');
+  } else {
+    // Expand
+    const formattedText = fullText
+      .replace(/\n\n/g, '</p><p class="mb-1">')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p class="mb-1">')
+      .replace(/$/, '</p>');
+
+    summaryText.innerHTML = formattedText;
+    summaryText.classList.add('expanded');
+    icon.textContent = 'expand_less';
+    buttonText.textContent = ' Hide full summary';
+    button.setAttribute('title', 'Click to collapse summary');
+  }
+
+  // Update tooltip
+  initializeTooltips();
+}
+
+// Copy text to clipboard
+async function copyToClipboard(button, text) {
+  try {
+    // Decode HTML entities
+    const decodedText = text
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+
+    await navigator.clipboard.writeText(decodedText);
+
+    // Provide visual feedback
+    const originalIcon = button.querySelector('.material-icons');
+    const originalTooltip = button.getAttribute('title');
+
+    // Change icon and tooltip to show success
+    originalIcon.textContent = 'check';
+    button.setAttribute('title', 'Copied to clipboard!');
+    button.classList.add('btn-success');
+    button.classList.remove('btn-outline-secondary');
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+      originalIcon.textContent = 'content_copy';
+      button.setAttribute('title', originalTooltip);
+      button.classList.remove('btn-success');
+      button.classList.add('btn-outline-secondary');
+
+      // Reinitialize tooltips to update the text
+      initializeTooltips();
+    }, 2000);
+
+    // Update tooltip immediately
+    initializeTooltips();
+
+    // Log successful copy
+    console.log('Text copied to clipboard successfully');
+  } catch (err) {
+    console.error('Failed to copy text to clipboard:', err);
+
+    // Fallback for older browsers or when clipboard API is not available
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        // Show success feedback using fallback method
+        const originalIcon = button.querySelector('.material-icons');
+        const originalTooltip = button.getAttribute('title');
+
+        originalIcon.textContent = 'check';
+        button.setAttribute('title', 'Copied to clipboard!');
+        button.classList.add('btn-success');
+        button.classList.remove('btn-outline-secondary');
+
+        setTimeout(() => {
+          originalIcon.textContent = 'content_copy';
+          button.setAttribute('title', originalTooltip);
+          button.classList.remove('btn-success');
+          button.classList.add('btn-outline-secondary');
+          initializeTooltips();
+        }, 2000);
+
+        initializeTooltips();
+        console.log('Text copied to clipboard using fallback method');
+      } else {
+        throw new Error('Fallback copy method failed');
+      }
+    } catch (fallbackErr) {
+      console.error('Fallback copy method also failed:', fallbackErr);
+
+      // Show error feedback
+      const originalIcon = button.querySelector('.material-icons');
+      const originalTooltip = button.getAttribute('title');
+
+      originalIcon.textContent = 'error';
+      button.setAttribute(
+        'title',
+        'Copy failed - please select and copy manually',
+      );
+      button.classList.add('btn-danger');
+      button.classList.remove('btn-outline-secondary');
+
+      setTimeout(() => {
+        originalIcon.textContent = 'content_copy';
+        button.setAttribute('title', originalTooltip);
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-outline-secondary');
+        initializeTooltips();
+      }, 3000);
+
+      initializeTooltips();
+    }
+  }
 }
 
 // Handle summarization request from backend
 async function handleSummarizeRequest(data) {
-    const { request_id, article_id, text, configuration } = data;
-    
-    try {
-        addLog(`Processing summarization request for article ${article_id} with ${configuration}`, 'info');
-        
-        // Log the input text only once per article (check if we already logged this article)
-        const existingInputLogs = document.getElementById('input-logs');
-        const articleAlreadyLogged = existingInputLogs.querySelector(`[data-article-id="${article_id}"]`);
-        
-        if (!articleAlreadyLogged) {
-            logInputData(article_id, text);
-        }
-        
-        // Parse configuration string (e.g., "tldr_short_plain-text")
-        const [type, length, format] = configuration.split('_');
-        
-        // Create summarizer with the specified configuration
-        const summarizer = await Summarizer.create({
-            sharedContext: `Summarizing article ${article_id}`,
-            type: type || 'tldr',
-            length: length || 'short',
-            format: format || 'plain-text'
-        });
-        
-        // Generate summary
-        const summary = await summarizer.summarize(text);
-        
-        // Send result back to backend
-        socket.emit('summarization_result', {
-            request_id: request_id,
-            article_id: article_id,
-            summary: summary
-        });
-        
-        // Clean up
-        if (summarizer.destroy) {
-            summarizer.destroy();
-        }
-        
-        addLog(`Summary generated for article ${article_id}: "${summary.substring(0, 100)}..."`, 'success');
-        
-    } catch (error) {
-        addLog(`Failed to generate summary for article ${article_id}: ${error.message}`, 'error');
-        
-        // Send error back to backend
-        socket.emit('summarization_result', {
-            request_id: request_id,
-            article_id: article_id,
-            error: error.message
-        });
+  const { request_id, article_id, text, configuration } = data;
+
+  try {
+    addLog(
+      `Processing summarization request for article ${article_id} with ${configuration}`,
+      'info',
+    );
+
+    // Log the input text only once per article (check if we already logged this article)
+    const existingInputLogs = document.getElementById('input-logs');
+    const articleAlreadyLogged = existingInputLogs.querySelector(
+      `[data-article-id="${article_id}"]`,
+    );
+
+    if (!articleAlreadyLogged) {
+      logInputData(article_id, text);
     }
+
+    // Parse configuration string (e.g., "tldr_short_plain-text")
+    const [type, length, format] = configuration.split('_');
+
+    // Create summarizer with the specified configuration
+    const summarizer = await Summarizer.create({
+      sharedContext: `Summarizing article ${article_id}`,
+      type: type || 'tldr',
+      length: length || 'short',
+      format: format || 'plain-text',
+    });
+
+    // Generate summary
+    const summary = await summarizer.summarize(text);
+
+    // Send result back to backend
+    socket.emit('summarization_result', {
+      request_id: request_id,
+      article_id: article_id,
+      summary: summary,
+    });
+
+    // Clean up
+    if (summarizer.destroy) {
+      summarizer.destroy();
+    }
+
+    addLog(
+      `Summary generated for article ${article_id}: "${summary.substring(
+        0,
+        100,
+      )}..."`,
+      'success',
+    );
+  } catch (error) {
+    addLog(
+      `Failed to generate summary for article ${article_id}: ${error.message}`,
+      'error',
+    );
+
+    // Send error back to backend
+    socket.emit('summarization_result', {
+      request_id: request_id,
+      article_id: article_id,
+      error: error.message,
+    });
+  }
 }
 
 // Make functions globally accessible for HTML onclick handlers
@@ -1058,3 +1637,6 @@ window.stopEvaluation = stopEvaluation;
 window.exportResults = exportResults;
 window.clearResults = clearResults;
 window.downloadModel = downloadModel;
+window.toggleArticleExpansion = toggleArticleExpansion;
+window.toggleSummaryExpansion = toggleSummaryExpansion;
+window.copyToClipboard = copyToClipboard;

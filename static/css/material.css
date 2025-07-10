@@ -796,7 +796,8 @@ details summary {
     font-weight: 500;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    user-select: none;
+    transition: background-color 0.2s ease;
 }
 
 [data-bs-theme="dark"] details summary {
@@ -825,6 +826,290 @@ details .log-container {
     margin: 0;
 }
 
+/* Details content structure */
+.details-content {
+    background-color: var(--mdc-theme-surface);
+}
+
+[data-bs-theme="dark"] .details-content {
+    background-color: var(--mdc-theme-surface);
+}
+
+.details-header {
+    background-color: rgba(0,0,0,0.02);
+    border-bottom: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+[data-bs-theme="dark"] .details-header {
+    background-color: rgba(255,255,255,0.02);
+    border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Enhanced article and summary display */
+.article-content, .summary-content {
+    position: relative;
+}
+
+.article-text, .summary-text {
+    line-height: 1.6;
+    font-family: 'Roboto', sans-serif;
+    color: var(--mdc-theme-on-surface);
+    transition: max-height 0.3s ease;
+}
+
+.article-text.expandable {
+    position: relative;
+}
+
+.article-text p, .summary-text p {
+    margin-bottom: 0.75rem;
+}
+
+.article-text p:last-child, .summary-text p:last-child {
+    margin-bottom: 0;
+}
+
+.expand-article-btn, .expand-summary-btn {
+    color: var(--mdc-theme-primary) !important;
+    text-decoration: none !important;
+    font-weight: 500;
+    border: none !important;
+    background: none !important;
+    padding: 0 !important;
+    transition: all 0.2s ease;
+}
+
+.expand-article-btn:hover, .expand-summary-btn:hover {
+    color: var(--mdc-theme-primary) !important;
+    transform: translateX(4px);
+}
+
+.expand-article-btn .material-icons, .expand-summary-btn .material-icons {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+}
+
+.article-text.expanded .expand-article-btn .material-icons,
+.summary-text.expanded .expand-summary-btn .material-icons {
+    transform: rotate(180deg);
+}
+
+/* Enhanced log entry styling */
+.log-entry.info {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.08) 0%, rgba(33, 150, 243, 0.02) 100%);
+    border-left: 4px solid var(--mdc-theme-primary);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.log-entry.success {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(76, 175, 80, 0.02) 100%);
+    border-left: 4px solid #4caf50;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.log-entry:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+[data-bs-theme="dark"] .log-entry:hover {
+    box-shadow: 0 2px 8px rgba(255,255,255,0.1);
+}
+
+/* Config result styling */
+.config-result {
+    transition: all 0.2s ease;
+}
+
+.config-result:hover {
+    background-color: rgba(33,150,243,0.08) !important;
+    transform: translateX(2px);
+}
+
+[data-bs-theme="dark"] .config-result:hover {
+    background-color: rgba(33,150,243,0.12) !important;
+}
+
+/* ROUGE badge styling */
+.rouge-scores .badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.5rem;
+    margin-right: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.rouge-scores .badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Article stats styling */
+.log-entry .text-end small {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    background: rgba(0,0,0,0.05);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+[data-bs-theme="dark"] .log-entry .text-end small {
+    background: rgba(255,255,255,0.05);
+}
+
+/* Code styling enhancements */
+code.bg-light {
+    background-color: rgba(0,0,0,0.08) !important;
+    border: 1px solid rgba(0,0,0,0.12);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+[data-bs-theme="dark"] code.bg-light {
+    background-color: rgba(255,255,255,0.08) !important;
+    border-color: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.87);
+}
+
+/* Summary text background */
+.summary-text.bg-light {
+    background-color: rgba(0,0,0,0.03) !important;
+    border: 1px solid rgba(0,0,0,0.08);
+    transition: all 0.2s ease;
+}
+
+[data-bs-theme="dark"] .summary-text.bg-light {
+    background-color: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.08);
+}
+
+.summary-text.bg-light:hover {
+    background-color: rgba(0,0,0,0.05) !important;
+    border-color: rgba(0,0,0,0.12);
+}
+
+[data-bs-theme="dark"] .summary-text.bg-light:hover {
+    background-color: rgba(255,255,255,0.05) !important;
+    border-color: rgba(255,255,255,0.12);
+}
+
+/* Copy button styling */
+.copy-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    background-color: transparent;
+}
+
+.copy-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-color: var(--mdc-theme-primary);
+    background-color: rgba(var(--mdc-theme-primary-rgb, 33, 150, 243), 0.08);
+}
+
+.copy-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.copy-btn.btn-success {
+    border-color: #28a745;
+    background-color: #28a745;
+    color: white;
+}
+
+.copy-btn.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.copy-btn.btn-danger {
+    border-color: #dc3545;
+    background-color: #dc3545;
+    color: white;
+}
+
+.copy-btn.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+[data-bs-theme="dark"] .copy-btn {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.87);
+}
+
+[data-bs-theme="dark"] .copy-btn:hover {
+    border-color: var(--mdc-theme-primary);
+    background-color: rgba(var(--mdc-theme-primary-rgb, 144, 202, 249), 0.12);
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+/* Enhanced gap for flexbox layouts */
+.gap-2 {
+    gap: 0.5rem;
+}
+
+/* Copy button animation for success state */
+@keyframes copySuccess {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.copy-btn.btn-success {
+    animation: copySuccess 0.3s ease;
+}
+
+/* Copy button in article headers */
+.log-entry .d-flex .copy-btn {
+    opacity: 0.7;
+    transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.log-entry:hover .copy-btn {
+    opacity: 1;
+}
+
+/* Ensure proper spacing for copy buttons */
+.article-content .d-flex,
+.config-result .d-flex {
+    align-items: flex-start;
+}
+
+/* Mobile responsiveness for copy buttons */
+@media (max-width: 768px) {
+    .copy-btn {
+        min-width: 28px;
+        height: 28px;
+    }
+
+    .copy-btn .material-icons {
+        font-size: 12px !important;
+    }
+
+    .gap-2 {
+        gap: 0.25rem;
+    }
+}
 /* Configuration charts */
 #config-charts-container {
     display: grid;
@@ -1085,4 +1370,163 @@ details .log-container {
 
 [data-bs-theme="dark"] .results-table-container::after {
     background: linear-gradient(transparent, #2d2d2d);
+}
+
+/* Enhanced Tooltips */
+.tooltip {
+    font-size: 0.875rem !important;
+    max-width: 300px !important;
+}
+
+.tooltip-inner {
+    max-width: 400px !important;
+    text-align: left !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}
+
+/* Dark theme tooltips */
+[data-bs-theme="dark"] .tooltip-inner {
+    background-color: #2d2d2d !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+/* Table cell hover effects for better tooltip discovery */
+.mdc-data-table__cell[data-bs-toggle="tooltip"] {
+    cursor: help;
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+.mdc-data-table__cell[data-bs-toggle="tooltip"]:hover {
+    background-color: rgba(25, 118, 210, 0.04);
+}
+
+[data-bs-theme="dark"] .mdc-data-table__cell[data-bs-toggle="tooltip"]:hover {
+    background-color: rgba(144, 202, 249, 0.08);
+}
+
+/* Accessibility improvements */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Focus indicators */
+.mdc-button:focus-visible,
+.mdc-text-field__input:focus-visible,
+.mdc-select__anchor:focus-visible,
+.mdc-radio__native-control:focus-visible + .mdc-radio__background {
+    outline: 2px solid var(--mdc-theme-primary);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .mdc-card {
+        border: 1px solid var(--mdc-theme-on-surface);
+    }
+    
+    .status-indicator {
+        border: 1px solid var(--mdc-theme-on-surface);
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Large text support */
+@media (min-resolution: 192dpi) {
+    .mdc-typography--body2,
+    .mdc-data-table__cell {
+        font-size: 0.95rem;
+    }
+}
+
+/* Better cursor pointer for interactive elements */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+details summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    user-select: none;
+}
+
+details summary::-webkit-details-marker {
+    display: none;
+}
+
+details summary::before {
+    content: '▶';
+    margin-right: 8px;
+    transition: transform 0.2s ease;
+    font-size: 0.8em;
+    flex-shrink: 0;
+}
+
+details[open] summary::before {
+    transform: rotate(90deg);
+}
+
+/* Ensure summary content doesn't break layout */
+details summary .material-icons {
+    flex-shrink: 0;
+}
+
+details summary span:not(.material-icons) {
+    flex-grow: 1;
+}
+
+/* Style the content area */
+details .mt-2:first-of-type {
+    border-top: 1px solid rgba(0,0,0,0.1);
+    padding-top: 12px;
+}
+
+[data-bs-theme="dark"] details .mt-2:first-of-type {
+    border-top-color: rgba(255,255,255,0.1);
+}
+
+/* Improve table text selection */
+.mdc-data-table__cell {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+}
+
+/* Better spacing for metric cards tooltips */
+.metric-card[data-bs-toggle="tooltip"] {
+    cursor: help;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card[data-bs-toggle="tooltip"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+[data-bs-theme="dark"] .metric-card[data-bs-toggle="tooltip"]:hover {
+    box-shadow: 0 4px 12px rgba(255,255,255,0.1);
 }

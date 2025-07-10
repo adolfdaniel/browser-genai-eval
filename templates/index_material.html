@@ -16,6 +16,9 @@
     <!-- Socket.IO -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     
+    <!-- Popper.js for tooltips -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/material.css') }}">
 </head>
@@ -24,13 +27,17 @@
     <header class="mdc-top-app-bar mdc-top-app-bar--fixed">
         <div class="mdc-top-app-bar__row">
             <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
-                <span class="material-icons mdc-top-app-bar__navigation-icon">assessment</span>
+                <span class="material-icons mdc-top-app-bar__navigation-icon" aria-hidden="true">assessment</span>
                 <span class="mdc-top-app-bar__title">Summarization Quality Evaluation</span>
             </section>
             <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end">
                 <!-- Theme Toggle -->
-                <button class="mdc-icon-button" id="theme-toggle">
-                    <span class="material-icons" id="theme-icon">brightness_6</span>
+                <button class="mdc-icon-button" id="theme-toggle" 
+                        aria-label="Toggle dark/light theme"
+                        data-bs-toggle="tooltip" 
+                        data-bs-placement="bottom" 
+                        title="Switch between light and dark themes">
+                    <span class="material-icons" id="theme-icon" aria-hidden="true">brightness_6</span>
                 </button>
             </section>
         </div>
@@ -45,21 +52,31 @@
                 <div class="mdc-card__primary-action">
                     <div class="mdc-card__content">
                         <h2 class="mdc-typography--headline6 mb-3">
-                            <span class="material-icons align-middle me-2">api</span>
+                            <span class="material-icons align-middle me-2" aria-hidden="true">api</span>
                             Browser Summarizer API Status
                         </h2>
-                        <div id="summarizer-status" class="status-indicator mb-3">
-                            <span class="material-icons">hourglass_empty</span>
+                        <div id="summarizer-status" class="status-indicator mb-3" 
+                             role="status" 
+                             aria-live="polite"
+                             data-bs-toggle="tooltip" 
+                             data-bs-placement="top" 
+                             title="Real-time status of the Browser Summarizer API">
+                            <span class="material-icons" aria-hidden="true">hourglass_empty</span>
                             Checking API support...
                         </div>
                         
                         <!-- Download Section -->
                         <div id="download-section" style="display: none;">
                             <div class="mb-3">
-                                <button class="mdc-button mdc-button--raised" id="download-model-btn" onclick="downloadModel()">
-                                    <span class="material-icons mdc-button__icon">download</span>
+                                <button class="mdc-button mdc-button--raised" id="download-model-btn" onclick="downloadModel()"
+                                        aria-describedby="download-help"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Download the AI summarization model to your browser for offline use">
+                                    <span class="material-icons mdc-button__icon" aria-hidden="true">download</span>
                                     <span class="mdc-button__label">Download Model</span>
                                 </button>
+                                <div id="download-help" class="visually-hidden">Downloads the AI model required for browser-based summarization</div>
                             </div>
                             <div id="download-progress-container" style="display: none;">
                                 <div class="mdc-linear-progress" id="download-progress">
@@ -80,10 +97,15 @@
                             </div>
                         </div>
 
-                        <button class="mdc-button mdc-button--outlined" onclick="testSummarizer()">
-                            <span class="material-icons mdc-button__icon">play_arrow</span>
+                        <button class="mdc-button mdc-button--outlined" onclick="testSummarizer()"
+                                aria-describedby="test-help"
+                                data-bs-toggle="tooltip" 
+                                data-bs-placement="top" 
+                                title="Test if the Browser Summarizer API is working correctly">
+                            <span class="material-icons mdc-button__icon" aria-hidden="true">play_arrow</span>
                             <span class="mdc-button__label">Test Summarizer</span>
                         </button>
+                        <div id="test-help" class="visually-hidden">Runs a quick test to verify the summarizer API functionality</div>
                     </div>
                 </div>
             </div>
@@ -92,19 +114,22 @@
             <div class="mdc-card mb-4">
                 <div class="mdc-card__content">
                     <h2 class="mdc-typography--headline6 mb-4">
-                        <span class="material-icons align-middle me-2">tune</span>
+                        <span class="material-icons align-middle me-2" aria-hidden="true">tune</span>
                         Configuration
                     </h2>
                     
                     <div class="row g-4 mb-4">
                         <!-- Dataset Selection -->
                         <div class="col-md-6">
-                            <div class="mdc-select mdc-select--outlined">
-                                <div class="mdc-select__anchor">
+                            <div class="mdc-select mdc-select--outlined" 
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Choose the dataset for evaluation">
+                                <div class="mdc-select__anchor" role="combobox" aria-expanded="false" aria-labelledby="dataset-label">
                                     <span class="mdc-notched-outline">
                                         <span class="mdc-notched-outline__leading"></span>
                                         <span class="mdc-notched-outline__notch">
-                                            <span class="mdc-floating-label">Dataset</span>
+                                            <span class="mdc-floating-label" id="dataset-label">Dataset</span>
                                         </span>
                                         <span class="mdc-notched-outline__trailing"></span>
                                     </span>
@@ -112,7 +137,7 @@
                                         <span class="mdc-select__selected-text" id="dataset-selected-text"></span>
                                     </span>
                                     <span class="mdc-select__dropdown-icon">
-                                        <span class="material-icons">arrow_drop_down</span>
+                                        <span class="material-icons" aria-hidden="true">arrow_drop_down</span>
                                     </span>
                                 </div>
                                 <div class="mdc-select__menu mdc-menu mdc-menu-surface mdc-menu-surface--fullwidth">
@@ -129,15 +154,24 @@
                         
                         <!-- Max Articles -->
                         <div class="col-md-6">
-                            <div class="mdc-text-field mdc-text-field--outlined">
-                                <input class="mdc-text-field__input" type="number" id="max-articles" value="5" min="1" max="20">
+                            <div class="mdc-text-field mdc-text-field--outlined"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Set the maximum number of articles to evaluate (1-20)">
+                                <input class="mdc-text-field__input" type="number" id="max-articles" 
+                                       value="5" min="1" max="20" 
+                                       aria-labelledby="max-articles-label"
+                                       aria-describedby="max-articles-help">
                                 <div class="mdc-notched-outline">
                                     <div class="mdc-notched-outline__leading"></div>
                                     <div class="mdc-notched-outline__notch">
-                                        <label for="max-articles" class="mdc-floating-label">Max Articles</label>
+                                        <label for="max-articles" class="mdc-floating-label" id="max-articles-label">Max Articles</label>
                                     </div>
                                     <div class="mdc-notched-outline__trailing"></div>
                                 </div>
+                            </div>
+                            <div id="max-articles-help" class="mdc-typography--caption mt-1 text-muted">
+                                Higher numbers take longer to process
                             </div>
                         </div>
                     </div>
@@ -149,25 +183,45 @@
                             <div class="col-md-6">
                                 <div class="mdc-form-field">
                                     <div class="mdc-radio">
-                                        <input class="mdc-radio__native-control" type="radio" id="singleConfig" name="evaluationMode" value="single" checked>
+                                        <input class="mdc-radio__native-control" type="radio" id="singleConfig" 
+                                               name="evaluationMode" value="single" checked
+                                               aria-describedby="single-config-help">
                                         <div class="mdc-radio__background">
                                             <div class="mdc-radio__outer-circle"></div>
                                             <div class="mdc-radio__inner-circle"></div>
                                         </div>
                                     </div>
-                                    <label for="singleConfig">Single Configuration (Custom)</label>
+                                    <label for="singleConfig" 
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="Test one specific configuration that you can customize">
+                                        Single Configuration (Custom)
+                                    </label>
+                                </div>
+                                <div id="single-config-help" class="mdc-typography--caption text-muted">
+                                    Faster evaluation with one configuration
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mdc-form-field">
                                     <div class="mdc-radio">
-                                        <input class="mdc-radio__native-control" type="radio" id="allConfigs" name="evaluationMode" value="all">
+                                        <input class="mdc-radio__native-control" type="radio" id="allConfigs" 
+                                               name="evaluationMode" value="all"
+                                               aria-describedby="all-configs-help">
                                         <div class="mdc-radio__background">
                                             <div class="mdc-radio__outer-circle"></div>
                                             <div class="mdc-radio__inner-circle"></div>
                                         </div>
                                     </div>
-                                    <label for="allConfigs">All Configurations (36 combinations)</label>
+                                    <label for="allConfigs"
+                                           data-bs-toggle="tooltip" 
+                                           data-bs-placement="top" 
+                                           title="Test all possible combinations of type, length, and format">
+                                        All Configurations (36 combinations)
+                                    </label>
+                                </div>
+                                <div id="all-configs-help" class="mdc-typography--caption text-muted">
+                                    Comprehensive evaluation (takes much longer)
                                 </div>
                             </div>
                         </div>
@@ -307,18 +361,33 @@
 
                     <!-- Action Buttons -->
                     <div class="d-flex gap-3 flex-wrap">
-                        <button class="mdc-button mdc-button--raised" id="start-btn" onclick="startEvaluation()">
-                            <span class="material-icons mdc-button__icon">play_arrow</span>
+                        <button class="mdc-button mdc-button--raised" id="start-btn" onclick="startEvaluation()"
+                                aria-describedby="start-help"
+                                data-bs-toggle="tooltip" 
+                                data-bs-placement="top" 
+                                title="Begin the summarization evaluation process">
+                            <span class="material-icons mdc-button__icon" aria-hidden="true">play_arrow</span>
                             <span class="mdc-button__label">Start Evaluation</span>
                         </button>
-                        <button class="mdc-button mdc-button--outlined" id="stop-btn" onclick="stopEvaluation()" disabled>
-                            <span class="material-icons mdc-button__icon">stop</span>
+                        <button class="mdc-button mdc-button--outlined" id="stop-btn" onclick="stopEvaluation()" disabled
+                                aria-describedby="stop-help"
+                                data-bs-toggle="tooltip" 
+                                data-bs-placement="top" 
+                                title="Stop the current evaluation process">
+                            <span class="material-icons mdc-button__icon" aria-hidden="true">stop</span>
                             <span class="mdc-button__label">Stop Evaluation</span>
                         </button>
-                        <button class="mdc-button mdc-button--outlined" onclick="exportResults()">
-                            <span class="material-icons mdc-button__icon">download</span>
+                        <button class="mdc-button mdc-button--outlined" onclick="exportResults()"
+                                aria-describedby="export-help"
+                                data-bs-toggle="tooltip" 
+                                data-bs-placement="top" 
+                                title="Download evaluation results as CSV file">
+                            <span class="material-icons mdc-button__icon" aria-hidden="true">download</span>
                             <span class="mdc-button__label">Export Results</span>
                         </button>
+                        <div id="start-help" class="visually-hidden">Starts the evaluation with current configuration</div>
+                        <div id="stop-help" class="visually-hidden">Stops the evaluation in progress</div>
+                        <div id="export-help" class="visually-hidden">Exports current results to CSV format</div>
                     </div>
                 </div>
             </div>
@@ -327,10 +396,15 @@
             <div class="mdc-card mb-4">
                 <div class="mdc-card__content">
                     <h2 class="mdc-typography--headline6 mb-3">
-                        <span class="material-icons align-middle me-2">trending_up</span>
+                        <span class="material-icons align-middle me-2" aria-hidden="true">trending_up</span>
                         Progress
                     </h2>
-                    <div class="mdc-linear-progress mb-3" id="main-progress">
+                    <div class="mdc-linear-progress mb-3" id="main-progress" 
+                         role="progressbar" 
+                         aria-label="Evaluation progress"
+                         aria-valuemin="0" 
+                         aria-valuemax="100" 
+                         aria-valuenow="0">
                         <div class="mdc-linear-progress__buffer">
                             <div class="mdc-linear-progress__buffer-bar"></div>
                             <div class="mdc-linear-progress__buffer-dots"></div>
@@ -340,8 +414,8 @@
                         </div>
                     </div>
                     <div class="d-flex justify-content-between">
-                        <span id="progress-text" class="mdc-typography--body2">0 / 0</span>
-                        <span id="current-article" class="mdc-typography--body2">Ready to start</span>
+                        <span id="progress-text" class="mdc-typography--body2" aria-live="polite">0 / 0</span>
+                        <span id="current-article" class="mdc-typography--body2" aria-live="polite">Ready to start</span>
                     </div>
                 </div>
             </div>
@@ -355,37 +429,55 @@
                     </h2>
                     <div class="row text-center">
                         <div class="col-md-2">
-                            <div class="metric-card">
+                            <div class="metric-card" 
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Total number of articles processed">
                                 <div class="metric-value" id="total-articles">0</div>
                                 <div class="metric-label">Articles</div>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <div class="metric-card">
+                            <div class="metric-card"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Total number of configurations tested">
                                 <div class="metric-value" id="total-configs">0</div>
                                 <div class="metric-label">Configs</div>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <div class="metric-card">
+                            <div class="metric-card"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Average ROUGE-1 score across all results (higher is better)">
                                 <div class="metric-value" id="avg-rouge1">0.00</div>
                                 <div class="metric-label">ROUGE-1</div>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <div class="metric-card">
+                            <div class="metric-card"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Average ROUGE-2 score across all results (higher is better)">
                                 <div class="metric-value" id="avg-rouge2">0.00</div>
                                 <div class="metric-label">ROUGE-2</div>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <div class="metric-card">
+                            <div class="metric-card"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Average ROUGE-L score across all results (higher is better)">
                                 <div class="metric-value" id="avg-rougeL">0.00</div>
                                 <div class="metric-label">ROUGE-L</div>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <div class="metric-card">
+                            <div class="metric-card"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Configuration with the highest average ROUGE scores">
                                 <div class="metric-value" id="best-config">N/A</div>
                                 <div class="metric-label">Best Config</div>
                             </div>
@@ -409,25 +501,49 @@
             <div class="mdc-card mb-4">
                 <div class="mdc-card__content">
                     <h2 class="mdc-typography--headline6 mb-3">
-                        <span class="material-icons align-middle me-2">table_view</span>
+                        <span class="material-icons align-middle me-2" aria-hidden="true">table_view</span>
                         Detailed Results
                     </h2>
                     <div class="results-table-container">
-                        <table class="mdc-data-table__table">
+                        <table class="mdc-data-table__table" role="table" aria-label="Detailed evaluation results">
                             <thead>
-                                <tr class="mdc-data-table__header-row">
-                                    <th class="mdc-data-table__header-cell">Article ID</th>
-                                    <th class="mdc-data-table__header-cell">Configuration</th>
-                                    <th class="mdc-data-table__header-cell">Length</th>
-                                    <th class="mdc-data-table__header-cell">ROUGE-1</th>
-                                    <th class="mdc-data-table__header-cell">ROUGE-2</th>
-                                    <th class="mdc-data-table__header-cell">ROUGE-L</th>
-                                    <th class="mdc-data-table__header-cell">Compression</th>
-                                    <th class="mdc-data-table__header-cell">Time</th>
+                                <tr class="mdc-data-table__header-row" role="row">
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Unique identifier for each article">Article ID</th>
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Summarization configuration (type_length_format)">Configuration</th>
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Original article length in characters">Length</th>
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="ROUGE-1 score (unigram overlap, 0-1 scale)">ROUGE-1</th>
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="ROUGE-2 score (bigram overlap, 0-1 scale)">ROUGE-2</th>
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="ROUGE-L score (longest common subsequence, 0-1 scale)">ROUGE-L</th>
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Compression ratio (original length / summary length)">Compression</th>
+                                    <th class="mdc-data-table__header-cell" role="columnheader" scope="col"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Processing time in seconds">Time</th>
                                 </tr>
                             </thead>
-                            <tbody id="results-tbody">
-                                <tr>
+                            <tbody id="results-tbody" role="rowgroup">
+                                <tr role="row">
                                     <td colspan="8" class="text-center text-muted p-4">No results yet</td>
                                 </tr>
                             </tbody>
@@ -441,15 +557,22 @@
                 <div class="mdc-card__content">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="mdc-typography--headline6 mb-0">
-                            <span class="material-icons align-middle me-2">terminal</span>
+                            <span class="material-icons align-middle me-2" aria-hidden="true">terminal</span>
                             System Logs
                         </h2>
-                        <button class="mdc-button mdc-button--outlined" onclick="clearLogs()">
-                            <span class="material-icons mdc-button__icon">clear</span>
+                        <button class="mdc-button mdc-button--outlined" onclick="clearLogs()"
+                                aria-label="Clear system logs"
+                                data-bs-toggle="tooltip" 
+                                data-bs-placement="top" 
+                                title="Clear all system log messages">
+                            <span class="material-icons mdc-button__icon" aria-hidden="true">clear</span>
                             <span class="mdc-button__label">Clear</span>
                         </button>
                     </div>
-                    <div id="logs" class="log-container"></div>
+                    <div id="logs" class="log-container" 
+                         role="log" 
+                         aria-live="polite" 
+                         aria-label="System activity logs"></div>
                 </div>
             </div>
 
@@ -457,34 +580,62 @@
             <div class="mdc-card mb-4">
                 <div class="mdc-card__content">
                     <h2 class="mdc-typography--headline6 mb-3">
-                        <span class="material-icons align-middle me-2">storage</span>
+                        <span class="material-icons align-middle me-2" aria-hidden="true">storage</span>
                         Data Logs
                     </h2>
                     
                     <!-- Input Data Logs -->
                     <details class="mb-3">
-                        <summary class="mdc-typography--subtitle1 cursor-pointer">
-                            <span class="material-icons align-middle me-2">input</span>
+                        <summary class="mdc-typography--subtitle1 cursor-pointer"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="View detailed input data sent to the summarizer API">
+                            <span class="material-icons align-middle me-2" aria-hidden="true">input</span>
                             Input Data
-                            <button class="mdc-button mdc-button--outlined ms-2" onclick="clearInputLogs()">
-                                <span class="material-icons mdc-button__icon">clear</span>
-                                <span class="mdc-button__label">Clear</span>
-                            </button>
                         </summary>
-                        <div id="input-logs" class="log-container mt-3"></div>
+                        <div class="details-content">
+                            <div class="details-header p-3 border-bottom">
+                                <button class="mdc-button mdc-button--outlined btn-sm" onclick="clearInputLogs()"
+                                        aria-label="Clear input data logs"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Clear all input data log entries">
+                                    <span class="material-icons mdc-button__icon" aria-hidden="true">clear</span>
+                                    <span class="mdc-button__label">Clear Input Logs</span>
+                                </button>
+                            </div>
+                            <div id="input-logs" class="log-container" 
+                                 role="log" 
+                                 aria-live="polite" 
+                                 aria-label="Input data logs"></div>
+                        </div>
                     </details>
 
                     <!-- Output Data Logs -->
                     <details class="mb-3">
-                        <summary class="mdc-typography--subtitle1 cursor-pointer">
-                            <span class="material-icons align-middle me-2">output</span>
+                        <summary class="mdc-typography--subtitle1 cursor-pointer"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="View detailed output data received from the summarizer API">
+                            <span class="material-icons align-middle me-2" aria-hidden="true">output</span>
                             Output Data
-                            <button class="mdc-button mdc-button--outlined ms-2" onclick="clearOutputLogs()">
-                                <span class="material-icons mdc-button__icon">clear</span>
-                                <span class="mdc-button__label">Clear</span>
-                            </button>
                         </summary>
-                        <div id="output-logs" class="log-container mt-3"></div>
+                        <div class="details-content">
+                            <div class="details-header p-3 border-bottom">
+                                <button class="mdc-button mdc-button--outlined btn-sm" onclick="clearOutputLogs()"
+                                        aria-label="Clear output data logs"
+                                        data-bs-toggle="tooltip" 
+                                        data-bs-placement="top" 
+                                        title="Clear all output data log entries">
+                                    <span class="material-icons mdc-button__icon" aria-hidden="true">clear</span>
+                                    <span class="mdc-button__label">Clear Output Logs</span>
+                                </button>
+                            </div>
+                            <div id="output-logs" class="log-container" 
+                                 role="log" 
+                                 aria-live="polite" 
+                                 aria-label="Output data logs"></div>
+                        </div>
                     </details>
                 </div>
             </div>
