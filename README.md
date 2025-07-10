@@ -1,6 +1,6 @@
 # Browser Summarization Quality Evaluation
 
-A comprehensive system for evaluating the quality of browser-based text summarization using the Web Summarizer API and ROUGE metrics with support for multiple datasets and configuration options.
+A comprehensive system for evaluating the quality of browser-based text summarization using the Web Summarizer API and ROUGE metrics with support for multiple datasets, concurrent user sessions, and advanced configuration options.
 
 ## Overview
 
@@ -10,7 +10,7 @@ This project creates a web-based evaluation platform that:
 3. Provides real-time progress tracking and results visualization
 4. Supports multiple datasets with configurable selection
 5. Offers both single and comprehensive multi-configuration evaluation modes
-6. Features both classic and modern Material Design interfaces
+6. **NEW**: Multi-user session support with isolated evaluation states
 
 ## Features
 
@@ -20,13 +20,14 @@ This project creates a web-based evaluation platform that:
 - 📊 **ROUGE Evaluation**: Comprehensive quality assessment using ROUGE-1, ROUGE-2, and ROUGE-L
 - 📈 **Progress Tracking**: Live progress bars and status updates with model download monitoring
 - 🗂️ **Multi-Dataset Support**: CNN/DailyMail, XSum, Reddit TIFU, Multi-News, and sample datasets
-- ⚙️ **Configuration Management**: 36 summarizer configurations (4 types × 3 lengths × 2 formats)
+- ⚙️ **Configuration Management**: 24 summarizer configurations (4 types × 3 lengths × 2 formats)
 - 🔄 **Evaluation Modes**: Single custom configuration or comprehensive all-configuration analysis
-- 📁 **Data Export**: Export results to CSV for further analysis
+- 📁 **Data Export**: Export results to CSV for further analysis with session-specific filenames
 - 🧪 **Browser API Testing**: Built-in summarizer API testing functionality
 - 📝 **Enhanced Logging**: Comprehensive logging with collapsible input/output data sections
 - 🌓 **Theme Support**: Light, dark, and auto theme switching
 - 📊 **Configuration Analysis**: Visual comparison of configuration performance
+- 👥 **Multi-User Support**: Isolated session states for concurrent users
 
 ## Prerequisites
 
@@ -85,8 +86,10 @@ python app.py
 
 ```
 edge-quality-eval/
-├── app.py                 # Main Flask application with WebSocket support
+├── app.py                 # Main Flask application with multi-user session support
 ├── config.py              # Configuration settings and dataset definitions
+├── config_production.py   # Production-optimized configuration for deployment
+├── startup.py             # Production server entry point with Flask-SocketIO
 ├── templates/
 │   ├── index.html         # Classic Bootstrap web interface
 │   └── index_material.html # Material Design web interface
@@ -94,9 +97,11 @@ edge-quality-eval/
 │   ├── css/
 │   │   ├── main.css       # Classic interface styles
 │   │   └── material.css   # Material Design styles
-│   └── js/
-│       ├── main.js        # Classic interface JavaScript logic
-│       └── material.js    # Material Design JavaScript logic
+│   ├── js/
+│   │   ├── main.js        # Classic interface JavaScript logic
+│   │   └── material.js    # Material Design JavaScript logic
+│   ├── favicon.svg        # Custom favicon (32x32)
+│   └── favicon-16.svg     # Small favicon (16x16)
 ├── requirements.txt       # Python dependencies
 ├── bootstrap.ps1          # Windows setup script
 ├── bootstrap.sh           # Linux/macOS setup script
@@ -104,7 +109,7 @@ edge-quality-eval/
 ├── start.sh               # Linux/macOS quick start script
 ├── test_setup.py          # Setup verification script
 ├── test_browser_compatibility.html  # Browser API testing page
-├── results/              # Generated results directory
+├── results/              # Generated results directory (session-specific files)
 ├── DESIGN.md             # System architecture and communication design document
 └── README.md             # This file
 ```
@@ -129,6 +134,7 @@ The design document covers:
 - **Datasets**: Hugging Face datasets library for loading multiple evaluation datasets
 - **Evaluate**: Evaluation metrics and tools
 - **ROUGE**: Text summarization evaluation metrics
+- **Thread-safe Session Management**: Concurrent user support with isolated states
 
 ### Frontend Components
 - **Socket.IO**: Real-time bidirectional communication
@@ -147,16 +153,18 @@ The design document covers:
 - **Types**: TL;DR, Key Points, Teaser, Headline (4 options)
 - **Lengths**: Short, Medium, Long (3 options)
 - **Formats**: Plain Text, Markdown (2 options)
-- **Total**: 36 possible combinations (4 × 3 × 2)
+- **Total**: 24 possible combinations (4 × 3 × 2)
 
-### Data Flow
-1. Server loads selected dataset (CNN/DailyMail, XSum, Reddit TIFU, Multi-News, or sample)
-2. Server sends article text to browser via WebSocket
-3. Browser uses Summarizer API to generate summary with specified configuration
-4. Browser sends summary back to server with configuration details
-5. Server calculates ROUGE scores against reference summary
-6. Results are stored, analyzed, and displayed in real-time
-7. Configuration performance is tracked and visualized
+### Data Flow & Session Management
+1. **Session Creation**: Each user gets a unique session ID with isolated state
+2. **Dataset Loading**: Server loads selected dataset per session (CNN/DailyMail, XSum, Reddit TIFU, Multi-News, or sample)
+3. **Request Processing**: Server sends article text to browser via WebSocket with session-specific request IDs
+4. **Browser Summarization**: Browser uses Summarizer API to generate summary with specified configuration
+5. **Response Handling**: Browser sends summary back with duplicate detection and cleanup
+6. **Evaluation**: Server calculates ROUGE scores against reference summary per session
+7. **Results Storage**: Results are stored in session-specific state and exported with session IDs
+8. **Real-time Updates**: Configuration performance is tracked and visualized per user session
+9. **Cleanup**: Completed requests are automatically cleaned up to prevent memory buildup
 
 ## Browser Support
 
@@ -222,14 +230,16 @@ Open `test_browser_compatibility.html` in your browser to run comprehensive API 
 
 The system provides:
 - **Real-time progress tracking** with model download monitoring
+- **Session-isolated results** for multiple concurrent users
 - **Individual article results** with configuration details
 - **Average ROUGE scores** across all articles and configurations
 - **Configuration performance analysis** with visual comparisons
 - **Best configuration identification** based on ROUGE scores
-- **Detailed logging** with collapsible input/output data sections
-- **CSV export functionality** with comprehensive result data
+- **Detailed logging** with collapsible input/output data sections and duplicate request detection
+- **CSV export functionality** with session-specific filenames and comprehensive result data
 - **Article length statistics** and compression ratios
 - **Theme-aware visualizations** supporting light and dark modes
+- **Memory-efficient cleanup** of completed requests to prevent buildup
 
 ## Troubleshooting
 
@@ -269,6 +279,11 @@ The system provides:
    - Ensure modern browser with full CSS support
    - Check for JavaScript errors in console
    - Fall back to classic interface at main URL
+
+7. **Session context errors**
+   - The system automatically handles Flask session context issues
+   - Multiple users can run evaluations simultaneously without interference
+   - Each user's evaluation state is isolated and protected
 
 ### Debug Mode
 Run with debug enabled:
