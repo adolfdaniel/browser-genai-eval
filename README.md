@@ -69,7 +69,7 @@ python app.py
 ## Usage
 
 1. **Start the server**: Navigate to the project directory and run `python app.py`
-2. **Open browser**: Visit `http://localhost:5000` (classic UI) or `http://localhost:5000/material` (Material Design UI)
+2. **Open browser**: Visit `http://localhost:5000`
 3. **Check API support**: The interface will automatically detect Summarizer API support
 4. **Download model**: If needed, download the summarization model with real-time progress tracking
 5. **Select dataset**: Choose from CNN/DailyMail, XSum, Reddit TIFU, Multi-News, or sample data
@@ -275,12 +275,7 @@ The system provides:
    - Avoid using "plain-text" separator conflicts
    - Verify valid configuration combinations
 
-6. **Material Design interface issues**
-   - Ensure modern browser with full CSS support
-   - Check for JavaScript errors in console
-   - Fall back to classic interface at main URL
-
-7. **Session context errors**
+6. **Session context errors**
    - The system automatically handles Flask session context issues
    - Multiple users can run evaluations simultaneously without interference
    - Each user's evaluation state is isolated and protected
