@@ -69,7 +69,9 @@ MAX_ALLOWED_ARTICLES = 50   # Maximum articles user can select
 # Evaluation Configuration
 ROUGE_METRICS = ['rouge1', 'rouge2', 'rougeL']
 USE_STEMMER = True
-SUMMARIZER_TIMEOUT = 30  # Seconds to wait for browser response
+SUMMARIZER_TIMEOUT = 240  # Seconds to wait for browser response
+SUMMARIZER_MAX_RETRIES = 1  # Retry up to 1 time on timeout (less aggressive for dev)
+SUMMARIZER_RETRY_DELAY = 2  # Wait 2 seconds between retries
 
 # Browser Summarizer Configuration (based on latest MDN spec)
 SUMMARIZER_CONFIG = {

@@ -429,9 +429,10 @@ async function loadAvailableDatasets() {
         }
         
         // Add options
-        datasets.forEach((dataset, index) => {
-            const datasetId = dataset.id || dataset.key;
-            const datasetName = dataset.name || dataset.id;
+        if (datasets && datasets.length > 0) {
+            datasets.forEach((dataset, index) => {
+                const datasetId = dataset.id || dataset.key;
+                const datasetName = dataset.name || dataset.id;
             
             // Add to hidden select
             const option = document.createElement('option');
@@ -449,10 +450,11 @@ async function loadAvailableDatasets() {
                 <span class="mdc-list-item__text">${datasetName}</span>
             `;
             datasetMenu.appendChild(listItem);
-        });
+            });
+        }
         
         // Store datasets in the format expected by other functions
-        availableDatasets = datasets;
+        availableDatasets = datasets || [];
         
         // Reinitialize the select component
         const selectElement = document.querySelector('.mdc-select');
@@ -501,11 +503,15 @@ function updateDatasetDescription() {
 
 // Update configuration preview
 function updateConfigPreview() {
-    const typeSelect = selects.find(s => s.root.querySelector('#config-type'));
-    const lengthSelect = selects.find(s => s.root.querySelector('#config-length'));
-    const formatSelect = selects.find(s => s.root.querySelector('#config-format'));
+    if (!selects || selects.length === 0) {
+        return;
+    }
     
-    if (typeSelect && lengthSelect && formatSelect) {
+    const typeSelect = selects.find(s => s && s.root && s.root.querySelector('#config-type'));
+    const lengthSelect = selects.find(s => s && s.root && s.root.querySelector('#config-length'));
+    const formatSelect = selects.find(s => s && s.root && s.root.querySelector('#config-format'));
+    
+    if (typeSelect && lengthSelect && formatSelect && typeSelect.value && lengthSelect.value && formatSelect.value) {
         const config = `${typeSelect.value}_${lengthSelect.value}_${formatSelect.value}`;
         const preview = document.getElementById('config-preview');
         if (preview) {
@@ -529,11 +535,11 @@ async function startEvaluation() {
         
         // Try to find the MDC selects by their position/relationship to hidden selects
         const configSelects = selects.filter(select => {
-            const container = select.root.parentElement;
+            const container = select && select.root && select.root.parentElement;
             return container && container.querySelector('select[id^="config-"]');
         });
         
-        console.log('Found config selects:', configSelects.length);
+        console.log('Found config selects:', configSelects ? configSelects.length : 0);
         
         // Get values from the hidden native selects (they should have the correct values)
         const typeElement = document.getElementById('config-type');
@@ -570,12 +576,12 @@ async function startEvaluation() {
     };
     
     // Only add selected_config for single mode
-    if (evaluationMode === 'single' && config) {
+    if (evaluationMode === 'single' && config && config.type && config.length && config.format) {
         requestData.selected_config = `${config.type}_${config.length}_${config.format}`;
     }
     
     addLog(`Starting evaluation with ${maxArticles} articles from ${currentDataset} dataset`, 'info');
-    if (config) {
+    if (config && config.type && config.length && config.format) {
         addLog(`Using single configuration: ${config.type}_${config.length}_${config.format}`, 'info');
     } else {
         addLog('Using all configurations mode', 'info');
@@ -677,117 +683,151 @@ function updateProgress(completed, total, currentArticle) {
 
 // Handle article completed
 function handleArticleCompleted(data) {
-    const articleId = data.article_id !== undefined && data.article_id !== null ? data.article_id : 'Unknown';
-    const config = data.configuration || data.config || 'unknown';
-    const summary = data.generated_summary || data.summary || '';
-    const rougeScores = data.rouge_scores || {};
-    
-    // Enhanced logging for debugging multiple configurations
-    console.log('handleArticleCompleted called with data:', {
-        articleId,
-        config,
-        summaryLength: summary.length,
-        hasRougeScores: Object.keys(rougeScores).length > 0,
-        fullData: data
-    });
-    
-    addLog(`Article ${articleId} completed with config ${config}`, 'info');
-    
-    // Convert backend data format to frontend format
-    const result = {
-        article_id: articleId,
-        config: config,
-        summary: summary,
-        rouge_scores: rougeScores,
-        compression_ratio: data.compression_ratio,
-        processing_time: data.processing_time
-    };
-    
-    evaluationResults.push(result);
-    addResultToTable(result);
-    updateSummaryMetrics();
-    
-    // Log the result data that we have
-    logOutputData(articleId, config, summary, rougeScores);
-    
-    // Force table scroll to show the new result
-    const tableContainer = document.querySelector('.results-table-container');
-    if (tableContainer) {
-        // Small delay to ensure the row is rendered
-        setTimeout(() => {
-            tableContainer.scrollTop = tableContainer.scrollHeight;
-        }, 100);
-    }
+  const articleId =
+    data.article_id !== undefined && data.article_id !== null
+      ? data.article_id
+      : 'Unknown';
+  const config = data.configuration || data.config || 'unknown';
+  const generatedSummary = data.generated_summary || data.summary || '';
+  const referenceSummary = data.reference_summary || '';
+  const rougeScores = data.rouge_scores || {};
+
+  // Enhanced logging for debugging multiple configurations
+  console.log('handleArticleCompleted called with data:', {
+    articleId,
+    config,
+    generatedSummaryLength: generatedSummary ? generatedSummary.length : 0,
+    referenceSummaryLength: referenceSummary ? referenceSummary.length : 0,
+    hasRougeScores: rougeScores ? Object.keys(rougeScores).length > 0 : false,
+    fullData: data,
+  });
+
+  addLog(`Article ${articleId} completed with config ${config}`, 'info');
+
+  // Convert backend data format to frontend format
+  const result = {
+    article_id: articleId,
+    config: config,
+    generated_summary: generatedSummary,
+    reference_summary: referenceSummary,
+    rouge_scores: rougeScores,
+    compression_ratio: data.compression_ratio,
+    processing_time: data.processing_time,
+    article_length: data.article_length,
+  };
+
+  evaluationResults.push(result);
+  addResultToTable(result);
+  updateSummaryMetrics();
+
+  // Log the result data that we have (use generated summary for output logs)
+  logOutputData(articleId, config, generatedSummary, rougeScores);
+
+  // Force table scroll to show the new result
+  const tableContainer = document.querySelector('.results-table-container');
+  if (tableContainer) {
+    // Small delay to ensure the row is rendered
+    setTimeout(() => {
+      tableContainer.scrollTop = tableContainer.scrollHeight;
+    }, 100);
+  }
 }
 
 // Handle evaluation complete
 function handleEvaluationComplete(data) {
-    addLog('Evaluation completed!', 'success');
-    setEvaluationState(false);
-    
-    if (data.results && data.results.length > 0) {
-        data.results.forEach(result => {
-            if (!evaluationResults.find(r => 
-                r.article_id === result.article_id && 
-                r.config === result.config
-            )) {
-                evaluationResults.push(result);
-                addResultToTable(result);
-            }
-        });
-    }
-    
-    updateSummaryMetrics();
-    showConfigurationAnalysis();
+  addLog('Evaluation completed!', 'success');
+  setEvaluationState(false);
+
+  if (data.results && data.results.length > 0) {
+    data.results.forEach((result) => {
+      if (
+        !evaluationResults.find(
+          (r) =>
+            r.article_id === result.article_id && r.config === result.config,
+        )
+      ) {
+        evaluationResults.push(result);
+        addResultToTable(result);
+      }
+    });
+  }
+
+  updateSummaryMetrics();
+  showConfigurationAnalysis();
 }
 
 // Add result to table
 function addResultToTable(result) {
-    const tbody = document.getElementById('results-tbody');
-    
-    // Remove "No results" message
-    if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
-        tbody.innerHTML = '';
-    }
-    
-    const row = document.createElement('tr');
-    row.className = 'mdc-data-table__row';
-    row.setAttribute('role', 'row');
-    
-    const rouge1 = result.rouge_scores?.rouge1 ?? 'N/A';
-    const rouge2 = result.rouge_scores?.rouge2 ?? 'N/A';
-    const rougeL = result.rouge_scores?.rougeL ?? 'N/A';
-    
-    const rouge1Str = typeof rouge1 === 'number' ? rouge1.toFixed(3) : rouge1;
-    const rouge2Str = typeof rouge2 === 'number' ? rouge2.toFixed(3) : rouge2;
-    const rougeLStr = typeof rougeL === 'number' ? rougeL.toFixed(3) : rougeL;
-    
-    // Prepare tooltip content for generated summary
-    const generatedSummary = result.generated_summary || 'N/A';
-    const summaryPreview = generatedSummary.length > 100 ? 
-        generatedSummary.substring(0, 100) + '...' : generatedSummary;
-    const summaryTooltip = generatedSummary.length > 100 ? 
-        `data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(generatedSummary)}"` : '';
-    
-    // Prepare tooltip content for reference summary
-    const referenceSummary = result.reference_summary || 'N/A';
-    const referencePreview = referenceSummary.length > 50 ? 
-        referenceSummary.substring(0, 50) + '...' : referenceSummary;
-    const referenceTooltip = referenceSummary.length > 50 ? 
-        `data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(referenceSummary)}"` : '';
-    
-    // Prepare configuration tooltip
-    const configTooltip = `data-bs-toggle="tooltip" data-bs-placement="top" title="Generated Summary: ${escapeHtml(summaryPreview)}<br><br>Reference Summary: ${escapeHtml(referencePreview)}"`;
-    
-    row.innerHTML = `
+  const tbody = document.getElementById('results-tbody');
+  
+  if (!tbody) {
+    console.error('Results table body not found');
+    return;
+  }
+
+  // Remove "No results" message
+  if (tbody.children.length === 1 && tbody.children[0] && tbody.children[0].children.length === 1) {
+    tbody.innerHTML = '';
+  }
+
+  const row = document.createElement('tr');
+  row.className = 'mdc-data-table__row';
+  row.setAttribute('role', 'row');
+
+  const rouge1 = result.rouge_scores?.rouge1 ?? 'N/A';
+  const rouge2 = result.rouge_scores?.rouge2 ?? 'N/A';
+  const rougeL = result.rouge_scores?.rougeL ?? 'N/A';
+
+  const rouge1Str = typeof rouge1 === 'number' ? rouge1.toFixed(3) : rouge1;
+  const rouge2Str = typeof rouge2 === 'number' ? rouge2.toFixed(3) : rouge2;
+  const rougeLStr = typeof rougeL === 'number' ? rougeL.toFixed(3) : rougeL;
+
+  // Prepare tooltip content for generated summary
+  const generatedSummary = result.generated_summary || 'N/A';
+  const summaryPreview =
+    generatedSummary.length > 100
+      ? generatedSummary.substring(0, 100) + '...'
+      : generatedSummary;
+  const summaryTooltip =
+    generatedSummary.length > 100
+      ? `data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(
+          generatedSummary,
+        )}"`
+      : '';
+
+  // Prepare tooltip content for reference summary
+  const referenceSummary = result.reference_summary || 'N/A';
+  const referencePreview =
+    referenceSummary.length > 50
+      ? referenceSummary.substring(0, 50) + '...'
+      : referenceSummary;
+  const referenceTooltip =
+    referenceSummary.length > 50
+      ? `data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(
+          referenceSummary,
+        )}"`
+      : '';
+
+  // Prepare configuration tooltip
+  const configTooltip = `data-bs-toggle="tooltip" data-bs-placement="top" title="Generated Summary: ${escapeHtml(
+    summaryPreview,
+  )}<br><br>Reference Summary: ${escapeHtml(referencePreview)}"`;
+
+  row.innerHTML = `
         <td class="mdc-data-table__cell" role="cell">${result.article_id}</td>
         <td class="mdc-data-table__cell" role="cell">
-            <code ${configTooltip}>${result.config || result.configuration || 'N/A'}</code>
+            <code ${configTooltip}>${
+    result.config || result.configuration || 'N/A'
+  }</code>
         </td>
         <td class="mdc-data-table__cell" role="cell" 
             data-bs-toggle="tooltip" 
             data-bs-placement="top" 
-            title="Article: ${result.article_length || 'N/A'} chars | Summary: ${result.generated_summary ? result.generated_summary.length : 'N/A'} chars">
+            title="Article: ${
+              result.article_length || 'N/A'
+            } chars | Summary: ${
+    result.generated_summary ? result.generated_summary.length : 'N/A'
+  } chars">
             ${result.article_length || 'N/A'}
         </td>
         <td class="mdc-data-table__cell" role="cell" 
@@ -811,110 +851,133 @@ function addResultToTable(result) {
         <td class="mdc-data-table__cell" role="cell" 
             data-bs-toggle="tooltip" 
             data-bs-placement="top" 
-            title="Compression ratio: ${result.compression_ratio ? result.compression_ratio.toFixed(2) + ':1' : 'N/A'} (original length ÷ summary length)">
-            ${result.compression_ratio ? result.compression_ratio.toFixed(2) : 'N/A'}
+            title="Compression ratio: ${
+              result.compression_ratio
+                ? result.compression_ratio.toFixed(2) + ':1'
+                : 'N/A'
+            } (original length ÷ summary length)">
+            ${
+              result.compression_ratio
+                ? result.compression_ratio.toFixed(2)
+                : 'N/A'
+            }
         </td>
         <td class="mdc-data-table__cell" role="cell" 
             data-bs-toggle="tooltip" 
             data-bs-placement="top" 
             title="Time taken to generate this summary">
-            ${result.processing_time ? result.processing_time.toFixed(2) + 's' : 'N/A'}
+            ${
+              result.processing_time
+                ? result.processing_time.toFixed(2) + 's'
+                : 'N/A'
+            }
         </td>
     `;
-    
-    tbody.appendChild(row);
-    
-    // Initialize tooltips for the new row
-    initializeTooltips();
-    
-    // Add visual feedback for new row
-    row.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
-    setTimeout(() => {
-        row.style.backgroundColor = '';
-    }, 2000);
+
+  tbody.appendChild(row);
+
+  // Initialize tooltips for the new row
+  initializeTooltips();
+
+  // Add visual feedback for new row
+  row.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+  setTimeout(() => {
+    row.style.backgroundColor = '';
+  }, 2000);
 }
 
 // Helper function to escape HTML for tooltips
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML.replace(/"/g, '&quot;');
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML.replace(/"/g, '&quot;');
 }
 
 // Update summary metrics
 function updateSummaryMetrics() {
-    const totalArticlesElement = document.getElementById('total-articles');
-    const totalConfigsElement = document.getElementById('total-configs');
-    const avgRouge1Element = document.getElementById('avg-rouge1');
-    const avgRouge2Element = document.getElementById('avg-rouge2');
-    const avgRougeLElement = document.getElementById('avg-rougeL');
-    const bestConfigElement = document.getElementById('best-config');
-    
-    // Count unique articles and configs
-    const uniqueArticles = new Set(evaluationResults.map(r => r.article_id)).size;
-    const uniqueConfigs = new Set(evaluationResults.map(r => r.config)).size;
-    
-    // Calculate averages for results with valid ROUGE scores
-    const validResults = evaluationResults.filter(r => 
-        r.rouge_scores && 
-        typeof r.rouge_scores.rouge1 === 'number' &&
-        typeof r.rouge_scores.rouge2 === 'number' &&
-        typeof r.rouge_scores.rougeL === 'number'
+  const totalArticlesElement = document.getElementById('total-articles');
+  const totalConfigsElement = document.getElementById('total-configs');
+  const avgRouge1Element = document.getElementById('avg-rouge1');
+  const avgRouge2Element = document.getElementById('avg-rouge2');
+  const avgRougeLElement = document.getElementById('avg-rougeL');
+  const bestConfigElement = document.getElementById('best-config');
+
+  // Count unique articles and configs
+  const uniqueArticles = new Set(evaluationResults.map((r) => r.article_id))
+    .size;
+  const uniqueConfigs = new Set(evaluationResults.map((r) => r.config)).size;
+
+  // Calculate averages for results with valid ROUGE scores
+  const validResults = evaluationResults.filter(
+    (r) =>
+      r.rouge_scores &&
+      typeof r.rouge_scores.rouge1 === 'number' &&
+      typeof r.rouge_scores.rouge2 === 'number' &&
+      typeof r.rouge_scores.rougeL === 'number',
+  );
+
+  let avgRouge1 = 0,
+    avgRouge2 = 0,
+    avgRougeL = 0;
+  if (validResults.length > 0) {
+    avgRouge1 =
+      validResults.reduce((sum, r) => sum + r.rouge_scores.rouge1, 0) /
+      validResults.length;
+    avgRouge2 =
+      validResults.reduce((sum, r) => sum + r.rouge_scores.rouge2, 0) /
+      validResults.length;
+    avgRougeL =
+      validResults.reduce((sum, r) => sum + r.rouge_scores.rougeL, 0) /
+      validResults.length;
+  }
+
+  // Find best configuration
+  let bestConfig = 'N/A';
+  if (validResults.length > 0) {
+    const bestResult = validResults.reduce((best, current) =>
+      current.rouge_scores.rouge1 > best.rouge_scores.rouge1 ? current : best,
     );
-    
-    let avgRouge1 = 0, avgRouge2 = 0, avgRougeL = 0;
-    if (validResults.length > 0) {
-        avgRouge1 = validResults.reduce((sum, r) => sum + r.rouge_scores.rouge1, 0) / validResults.length;
-        avgRouge2 = validResults.reduce((sum, r) => sum + r.rouge_scores.rouge2, 0) / validResults.length;
-        avgRougeL = validResults.reduce((sum, r) => sum + r.rouge_scores.rougeL, 0) / validResults.length;
-    }
-    
-    // Find best configuration
-    let bestConfig = 'N/A';
-    if (validResults.length > 0) {
-        const bestResult = validResults.reduce((best, current) => 
-            current.rouge_scores.rouge1 > best.rouge_scores.rouge1 ? current : best
-        );
-        bestConfig = bestResult.config;
-    }
-    
-    // Update elements
-    if (totalArticlesElement) totalArticlesElement.textContent = uniqueArticles;
-    if (totalConfigsElement) totalConfigsElement.textContent = uniqueConfigs;
-    if (avgRouge1Element) avgRouge1Element.textContent = avgRouge1.toFixed(3);
-    if (avgRouge2Element) avgRouge2Element.textContent = avgRouge2.toFixed(3);
-    if (avgRougeLElement) avgRougeLElement.textContent = avgRougeL.toFixed(3);
-    if (bestConfigElement) bestConfigElement.textContent = bestConfig;
-    
-    // Reinitialize tooltips for updated content
-    initializeTooltips();
+    bestConfig = bestResult.config;
+  }
+
+  // Update elements
+  if (totalArticlesElement) totalArticlesElement.textContent = uniqueArticles;
+  if (totalConfigsElement) totalConfigsElement.textContent = uniqueConfigs;
+  if (avgRouge1Element) avgRouge1Element.textContent = avgRouge1.toFixed(3);
+  if (avgRouge2Element) avgRouge2Element.textContent = avgRouge2.toFixed(3);
+  if (avgRougeLElement) avgRougeLElement.textContent = avgRougeL.toFixed(3);
+  if (bestConfigElement) bestConfigElement.textContent = bestConfig;
+
+  // Reinitialize tooltips for updated content
+  initializeTooltips();
 }
 
 // Show configuration analysis
 function showConfigurationAnalysis() {
-    const configComparison = document.getElementById('config-comparison');
-    const chartsContainer = document.getElementById('config-charts-container');
-    
-    if (evaluationResults.length === 0) return;
-    
-    configComparison.style.display = 'block';
-    chartsContainer.innerHTML = '';
-    
-    // Group results by configuration
-    const configGroups = {};
-    evaluationResults.forEach(result => {
-        if (!result.rouge_scores || typeof result.rouge_scores.rouge1 !== 'number') return;
-        
-        if (!configGroups[result.config]) {
-            configGroups[result.config] = [];
-        }
-        configGroups[result.config].push(result);
-    });
-    
-    // Create summary chart
-    const chartDiv = document.createElement('div');
-    chartDiv.className = 'config-chart';
-    chartDiv.innerHTML = `
+  const configComparison = document.getElementById('config-comparison');
+  const chartsContainer = document.getElementById('config-charts-container');
+
+  if (evaluationResults.length === 0) return;
+
+  configComparison.style.display = 'block';
+  chartsContainer.innerHTML = '';
+
+  // Group results by configuration
+  const configGroups = {};
+  evaluationResults.forEach((result) => {
+    if (!result.rouge_scores || typeof result.rouge_scores.rouge1 !== 'number')
+      return;
+
+    if (!configGroups[result.config]) {
+      configGroups[result.config] = [];
+    }
+    configGroups[result.config].push(result);
+  });
+
+  // Create summary chart
+  const chartDiv = document.createElement('div');
+  chartDiv.className = 'config-chart';
+  chartDiv.innerHTML = `
         <h3 class="mdc-typography--subtitle1">Configuration Performance</h3>
         <div class="table-responsive">
             <table class="table table-sm">
@@ -928,11 +991,24 @@ function showConfigurationAnalysis() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${Object.entries(configGroups).map(([config, results]) => {
-                        const avgRouge1 = results.reduce((sum, r) => sum + r.rouge_scores.rouge1, 0) / results.length;
-                        const avgRouge2 = results.reduce((sum, r) => sum + r.rouge_scores.rouge2, 0) / results.length;
-                        const avgRougeL = results.reduce((sum, r) => sum + r.rouge_scores.rougeL, 0) / results.length;
-                        
+                    ${Object.entries(configGroups)
+                      .map(([config, results]) => {
+                        const avgRouge1 =
+                          results.reduce(
+                            (sum, r) => sum + r.rouge_scores.rouge1,
+                            0,
+                          ) / results.length;
+                        const avgRouge2 =
+                          results.reduce(
+                            (sum, r) => sum + r.rouge_scores.rouge2,
+                            0,
+                          ) / results.length;
+                        const avgRougeL =
+                          results.reduce(
+                            (sum, r) => sum + r.rouge_scores.rougeL,
+                            0,
+                          ) / results.length;
+
                         return `
                             <tr>
                                 <td><code>${config}</code></td>
@@ -942,63 +1018,97 @@ function showConfigurationAnalysis() {
                                 <td>${avgRougeL.toFixed(3)}</td>
                             </tr>
                         `;
-                    }).join('')}
+                      })
+                      .join('')}
                 </tbody>
             </table>
         </div>
     `;
-    
-    chartsContainer.appendChild(chartDiv);
+
+  chartsContainer.appendChild(chartDiv);
 }
 
 // Clear results
 function clearResults() {
-    evaluationResults = [];
-    
-    const tbody = document.getElementById('results-tbody');
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted p-4">No results yet</td></tr>';
-    
-    updateSummaryMetrics();
-    
-    const configComparison = document.getElementById('config-comparison');
-    configComparison.style.display = 'none';
-    
-    // Clear data logs as well when starting a new evaluation
-    clearInputLogs();
-    clearOutputLogs();
+  evaluationResults = [];
+
+  const tbody = document.getElementById('results-tbody');
+  tbody.innerHTML =
+    '<tr><td colspan="8" class="text-center text-muted p-4">No results yet</td></tr>';
+
+  updateSummaryMetrics();
+
+  const configComparison = document.getElementById('config-comparison');
+  configComparison.style.display = 'none';
+
+  // Clear data logs as well when starting a new evaluation
+  clearInputLogs();
+  clearOutputLogs();
 }
 
 // Export results
 function exportResults() {
-    if (evaluationResults.length === 0) {
-        addLog('No results to export', 'warning');
-        return;
-    }
-    
-    const csvContent = [
-        ['Article ID', 'Configuration', 'Summary Length', 'ROUGE-1', 'ROUGE-2', 'ROUGE-L', 'Compression Ratio', 'Processing Time'],
-        ...evaluationResults.map(result => [
-            result.article_id,
-            result.config,
-            result.summary ? result.summary.length : '',
-            result.rouge_scores?.rouge1 ?? '',
-            result.rouge_scores?.rouge2 ?? '',
-            result.rouge_scores?.rougeL ?? '',
-            result.compression_ratio ?? '',
-            result.processing_time ?? ''
-        ])
-    ].map(row => row.join(',')).join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `summarization_results_${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.csv`;
-    a.click();
-    
-    URL.revokeObjectURL(url);
-    addLog('Results exported to CSV', 'success');
+  if (evaluationResults.length === 0) {
+    addLog('No results to export', 'warning');
+    return;
+  }
+
+  const csvContent = [
+    [
+      'Article ID',
+      'Configuration',
+      'Article Length',
+      'Generated Summary',
+      'Generated Summary Length',
+      'Reference Summary',
+      'Reference Summary Length',
+      'ROUGE-1',
+      'ROUGE-2',
+      'ROUGE-L',
+      'Compression Ratio',
+      'Processing Time',
+    ],
+    ...evaluationResults.map((result) => [
+      result.article_id,
+      result.config,
+      result.article_length || '',
+      // Escape quotes and newlines in summary text for CSV
+      result.generated_summary
+        ? `"${result.generated_summary
+            .replace(/"/g, '""')
+            .replace(/\n/g, '\\n')}"`
+        : '',
+      result.generated_summary ? result.generated_summary.length : '',
+      // Escape quotes and newlines in reference summary text for CSV
+      result.reference_summary
+        ? `"${result.reference_summary
+            .replace(/"/g, '""')
+            .replace(/\n/g, '\\n')}"`
+        : '',
+      result.reference_summary ? result.reference_summary.length : '',
+      result.rouge_scores?.rouge1 ?? '',
+      result.rouge_scores?.rouge2 ?? '',
+      result.rouge_scores?.rougeL ?? '',
+      result.compression_ratio ?? '',
+      result.processing_time ?? '',
+    ]),
+  ]
+    .map((row) => row.join(','))
+    .join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `summarization_results_${new Date()
+    .toISOString()
+    .slice(0, 19)
+    .replace(/[:.]/g, '-')}.csv`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+  addLog('Results exported to CSV', 'success');
 }
 
 // Logging functions

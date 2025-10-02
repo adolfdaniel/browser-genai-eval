@@ -73,7 +73,9 @@ MAX_ALLOWED_ARTICLES = 25   # Reduced for production
 # Evaluation Configuration
 ROUGE_METRICS = ['rouge1', 'rouge2', 'rougeL']
 USE_STEMMER = True
-SUMMARIZER_TIMEOUT = 45  # Increased timeout for production
+SUMMARIZER_TIMEOUT = 240  # Increased timeout for production
+SUMMARIZER_MAX_RETRIES = 2  # Retry up to 2 times on timeout
+SUMMARIZER_RETRY_DELAY = 5  # Wait 5 seconds between retries
 
 # Browser Summarizer Configuration
 SUMMARIZER_CONFIG = {

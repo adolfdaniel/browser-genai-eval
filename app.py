@@ -391,42 +391,87 @@ def request_browser_summarization(article, session_id):
         log_message(f"Error processing article {article['id']}: {str(e)}", session_id)
         return []
 
-def wait_for_browser_response(article, config=None, session_id=None, timeout=30):
-    """Wait for browser to return summarization result"""
-    # Find the request ID for this article and config
-    request_suffix = f"_{config}" if config else ""
-    request_key_prefix = f"req_{article['id']}{request_suffix}_"
+def wait_for_browser_response(article, config_name=None, session_id=None, timeout=None, max_retries=None):
+    """Wait for browser to return summarization result with retry logic"""
+    # Use config values if not specified
+    if timeout is None:
+        timeout = config.SUMMARIZER_TIMEOUT
+    if max_retries is None:
+        max_retries = getattr(config, 'SUMMARIZER_MAX_RETRIES', 1)
     
-    # Find the matching request ID (most recent one)
-    request_id = None
-    pending_requests = get_pending_requests(session_id)
-    matching_requests = [req_id for req_id in pending_requests 
-                       if req_id.startswith(request_key_prefix)]
-    if matching_requests:
-        request_id = max(matching_requests)  # Get the most recent one
+    retry_delay = getattr(config, 'SUMMARIZER_RETRY_DELAY', 2)
     
-    if not request_id:
-        log_message(f"No pending request found for article {article['id']}, config: {config}", session_id)
-        return create_mock_result(article, config)
+    for attempt in range(max_retries + 1):  # +1 because we want to include the initial attempt
+        if attempt > 0:
+            log_message(f"Retry attempt {attempt}/{max_retries} for article {article['id']}, config: {config_name}", session_id)
+            time.sleep(retry_delay)
+            
+            # Create a new request for the retry
+            request_suffix = f"_{config_name}" if config_name else ""
+            request_id = f"req_{article['id']}{request_suffix}_{int(time.time())}"
+            
+            # Store the retry request
+            pending_requests = get_pending_requests(session_id)
+            pending_requests[request_id] = {
+                'article': article,
+                'config': config_name,
+                'result': None,
+                'completed': False,
+                'start_time': time.time(),
+                'retry_attempt': attempt
+            }
+            save_pending_requests(session_id, pending_requests)
+            
+            # Emit retry request to browser
+            socketio.emit('summarize_request', {
+                'request_id': request_id,
+                'article_id': article['id'],
+                'text': article['article'],
+                'configuration': config_name,
+                'retry_attempt': attempt
+            })
     
-    # Wait for response
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        pending_requests = get_pending_requests(session_id)  # Get fresh session data
-        if request_id in pending_requests and pending_requests[request_id]['completed']:
-            result = pending_requests[request_id]['result']
-            # Don't delete immediately - let it be cleaned up later to avoid duplicates
-            # Clean up will happen in a cleanup function or when session expires
-            return result
-        time.sleep(0.1)
+        # Find the request ID for this article and config
+        request_suffix = f"_{config_name}" if config_name else ""
+        request_key_prefix = f"req_{article['id']}{request_suffix}_"
     
-    # Timeout - clean up and return mock result
-    pending_requests = get_pending_requests(session_id)
-    if request_id in pending_requests:
-        del pending_requests[request_id]
-        save_pending_requests(session_id, pending_requests)
-    log_message(f"Timeout waiting for browser response for article {article['id']}, config: {config}", session_id)
-    return create_mock_result(article, config)
+        # Find the matching request ID (most recent one)
+        request_id = None
+        pending_requests = get_pending_requests(session_id)
+        matching_requests = [req_id for req_id in pending_requests 
+                           if req_id.startswith(request_key_prefix)]
+        if matching_requests:
+            request_id = max(matching_requests)  # Get the most recent one
+        
+        if not request_id:
+            if attempt == 0:
+                log_message(f"No pending request found for article {article['id']}, config: {config_name}", session_id)
+            continue  # Try next attempt or fall through to mock result
+        
+        # Wait for response
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            pending_requests = get_pending_requests(session_id)  # Get fresh session data
+            if request_id in pending_requests and pending_requests[request_id]['completed']:
+                result = pending_requests[request_id]['result']
+                # Don't delete immediately - let it be cleaned up later to avoid duplicates
+                log_message(f"Successfully received response for article {article['id']}, config: {config_name} (attempt {attempt + 1})", session_id)
+                return result
+            time.sleep(0.1)
+        
+        # Timeout for this attempt
+        pending_requests = get_pending_requests(session_id)
+        if request_id in pending_requests:
+            del pending_requests[request_id]
+            save_pending_requests(session_id, pending_requests)
+        
+        if attempt < max_retries:
+            log_message(f"Timeout on attempt {attempt + 1}/{max_retries + 1} for article {article['id']}, config: {config_name}", session_id)
+        else:
+            log_message(f"Final timeout after {max_retries + 1} attempts for article {article['id']}, config: {config_name}", session_id)
+    
+    # All retries exhausted, return mock result
+    return create_mock_result(article, config_name)
 
 def create_mock_result(article, config=None):
     """Create mock evaluation result for demonstration"""
